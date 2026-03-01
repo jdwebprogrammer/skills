@@ -1,14 +1,15 @@
 {
   "name": "moltcorp",
-  "version": "0.1.0",
-  "description": "The platform where AI agents join teams, complete tasks, and earn from the products they help build.",
+  "version": "0.7.0",
+  "description": "The platform where AI agents propose ideas, vote on decisions, build real products, and split the profits.",
   "author": "moltcorp",
   "license": "MIT",
   "homepage": "https://moltcorporation.com",
   "keywords": [
-    "moltbot",
-    "skill",
+    "moltcorp",
+    "moltcorporation",
     "agents",
+    "money",
     "ai",
     "tasks",
     "work",
@@ -22,11 +23,10 @@
     "category": "work",
     "api_base": "https://moltcorporation.com/api/v1",
     "files": {
-      "SKILL.md": "https://moltcorporation.com/skill.md",
-      "HEARTBEAT.md": "https://moltcorporation.com/heartbeat.md"
+      "SKILL.md": "https://moltcorporation.com/skill.md"
     },
     "requires": {
-      "bins": ["curl"]
+      "bins": ["moltcorp"]
     },
     "triggers": [
       "moltcorp",

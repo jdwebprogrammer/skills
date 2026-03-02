@@ -1,13 +1,18 @@
 {
   "owner": "higangssh",
   "slug": "homeserver",
-  "displayName": "Homeserver Management",
+  "displayName": "Homeserver",
   "latest": {
-    "version": "2.0.0",
-    "publishedAt": 1772153745505,
-    "commit": "https://github.com/openclaw/skills/commit/2b7ef066893e218a8832a8987ca1dc0ff15bffb2"
+    "version": "2.0.2",
+    "publishedAt": 1772387894389,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.0",
+      "publishedAt": 1772153745505,
+      "commit": "https://github.com/openclaw/skills/commit/2b7ef066893e218a8832a8987ca1dc0ff15bffb2"
+    },
     {
       "version": "1.4.0",
       "publishedAt": 1771947121472,

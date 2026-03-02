@@ -1,19 +1,32 @@
 ---
 name: homeserver
 description: Homelab server management via homebutler CLI. Check system status (CPU/RAM/disk), manage Docker containers, Wake-on-LAN, scan open ports, discover network devices, monitor resource alerts, and manage multiple servers over SSH. Use when asked about server status, docker containers, wake machines, open ports, network devices, system alerts, or multi-server management.
+compatibility: Requires homebutler binary in PATH. Works with Claude Code, OpenClaw, Cursor, Gemini CLI, and any Agent Skills compatible tool.
+license: MIT
 metadata:
-  {
-    "openclaw": {
-      "emoji": "🏠",
-      "requires": { "anyBins": ["homebutler"] },
-      "configPaths": ["homebutler.yaml", "~/.config/homebutler/config.yaml"]
-    }
-  }
+  author: Higangssh
+  version: "2.0"
+  openclaw:
+    emoji: "🏠"
+    requires:
+      anyBins: ["homebutler"]
+    configPaths: ["homebutler.yaml", "~/.config/homebutler/config.yaml"]
+    permissions:
+      - "Read system metrics (CPU, memory, disk)"
+      - "List and manage Docker containers"
+      - "Send Wake-on-LAN packets on local network"
+      - "Scan open ports on local/remote servers"
+      - "ARP/ping scan on local LAN only"
+      - "SSH to configured remote servers (key-based auth)"
+      - "Deploy binaries to remote servers via SSH (requires user confirmation)"
+    credentials:
+      - "SSH keys (~/.ssh/id_ed25519 or ~/.ssh/id_rsa) for remote server access"
+      - "Server config (~/.config/homebutler/config.yaml) with host/user/auth details"
 ---
 
 # Homeserver Management
 
-Manage homelab servers using the `homebutler` CLI. Single binary, JSON output, AI-friendly.
+Manage homelab servers using the [`homebutler`](https://github.com/Higangssh/homebutler) CLI. Single binary, JSON output, AI-friendly.
 
 ## Prerequisites
 
@@ -32,11 +45,6 @@ go install github.com/Higangssh/homebutler@latest
 # Option 3: Build from source
 git clone https://github.com/Higangssh/homebutler.git
 cd homebutler && make build && sudo mv homebutler /usr/local/bin/
-
-# Option 4: Shell installer (review script before running)
-curl -fsSL https://raw.githubusercontent.com/Higangssh/homebutler/main/install.sh -o install.sh
-less install.sh  # review first
-sh install.sh
 ```
 
 ## Commands

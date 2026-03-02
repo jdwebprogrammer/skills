@@ -21,12 +21,7 @@ if [[ "${1:-}" == "setup-default" ]]; then
   openclaw cron add \
     --every 5m \
     --name "stop-loss-tp" \
-    --message "Load the kryptogo-meme-trader skill. Source .env. Call /agent/portfolio with the agent wallet.
-For each open position:
-- If unrealized PnL <= -stop_loss_pct -> sell entire position (stop-loss).
-- If unrealized PnL >= +take_profit_pct -> sell entire position (take-profit).
-Read thresholds from memory/trading-preferences.json (defaults: stop_loss_pct=30, take_profit_pct=100).
-Report every executed trade to the user. If no action taken, stay silent."
+    --message "Run the monitoring script: 'python3 skills/kryptogo-meme-trader/scripts/monitor.py'. Report the output."
 
   echo ""
   echo "→ Adding discovery-scan (every 30 min)..."

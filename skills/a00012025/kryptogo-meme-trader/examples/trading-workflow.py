@@ -670,28 +670,90 @@ def analyze_and_trade(token_mint, max_position_sol=None):
     return result
 
 
+def check_account_tier():
+    """Check agent account tier."""
+    try:
+        resp = requests.get(f"{API_BASE}/agent/account", headers=HEADERS, timeout=5)
+        if resp.status_code == 200:
+            return resp.json().get("tier", "free").lower()
+    except Exception:
+        pass
+    return "free"
+
+
+def scan_signal_dashboard(chain_id="501"):
+    """Scan signal dashboard for Pro/Alpha users."""
+    scan_count = PREFERENCES.get("scan_count", 10)
+    params = {
+        "chain_id": chain_id,
+        "sort_by": "signal_count",
+        "page_size": str(scan_count)
+    }
+    try:
+        resp = requests.get(f"{API_BASE}/signal-dashboard", headers=HEADERS, params=params)
+        resp.raise_for_status()
+        # Adapt response to match trending tokens structure if needed
+        data = resp.json()
+        if isinstance(data, list):
+            return data
+        return data.get("tokens", []) or data.get("signals", [])
+    except Exception as e:
+        print(f"Warning: Signal Dashboard scan failed: {e}")
+        return []
+
+
 def discover_and_analyze():
-    """Scan trending tokens, filter by criteria, and trade the best candidate."""
+    """Scan tokens (Signals for Pro+, Trending for Free) and trade."""
     max_position_sol = PREFERENCES.get("max_position_size", 0.1)
     min_mcap = PREFERENCES.get("min_market_cap", 500_000)
 
-    tokens = scan_trending_tokens(
-        marketCapMin=str(int(min_mcap / 5)),   # broader scan, filter later
-        marketCapMax="5000000",
-        holdersMin="50",
-        volumeMin="10000",
-        tokenAgeMax="7",
-        tokenAgeType="3",  # days
-    )
+    tier = check_account_tier()
+    print(f"Account Tier: {tier.upper()}")
+
+    tokens = []
+    if tier in ["pro", "alpha"]:
+        print("Scanning Signal Dashboard (Pro/Alpha exclusive)...")
+        tokens = scan_signal_dashboard()
+        if not tokens:
+            print("No signals found. Falling back to Trending Tokens.")
+            tokens = scan_trending_tokens(
+                marketCapMin=str(int(min_mcap / 5)),
+                marketCapMax="5000000",
+                holdersMin="50",
+                volumeMin="10000",
+                tokenAgeMax="7",
+                tokenAgeType="3",
+            )
+    else:
+        print("Scanning Trending Tokens...")
+        tokens = scan_trending_tokens(
+            marketCapMin=str(int(min_mcap / 5)),
+            marketCapMax="5000000",
+            holdersMin="50",
+            volumeMin="10000",
+            tokenAgeMax="7",
+            tokenAgeType="3",
+        )
 
     for token in tokens:
-        mint = token["tokenContractAddress"]
-        symbol = token["tokenSymbol"]
-        mcap = float(token["marketCap"] or 0)
-        volume = float(token["volume"] or 0)
-        change = float(token["change"] or 0)
+        # Normalized field access (signals might have different keys)
+        mint = token.get("tokenContractAddress") or token.get("address") or token.get("mint") or token.get("contract_address") or token.get("token_address")
+        chain_id = str(token.get("chain_id") or token.get("chainId") or "501")
+        symbol = token.get("tokenSymbol") or token.get("symbol")
+        mcap = float(token.get("marketCap") or token.get("market_cap") or 0)
+        volume = float(token.get("volume") or token.get("volume_24h") or 0)
+        change = float(token.get("change") or token.get("price_change_24h") or 0)
 
-        print(f"Scanning {symbol}: mcap=${mcap:,.0f}, vol=${volume:,.0f}, change={change:+.1f}%")
+        print(f"Scanning {symbol}: mcap=${mcap:,.0f}, vol=${volume:,.0f}, change={change:+.1f}% (mint: {mint}, chain: {chain_id})")
+
+        if not mint:
+            print("Skipping token with missing mint address.")
+            continue
+        
+        # Skip non-Solana tokens for trading (swap.py only supports Solana)
+        if chain_id != "501":
+            print(f"Skipping non-Solana token on chain {chain_id}")
+            continue
 
         if change < 0:
             continue  # Skip tokens with negative momentum
@@ -718,7 +780,7 @@ def monitor_positions():
         avg_cost = float(token.get("holding_avg_cost", "0"))
         balance = float(token.get("balance", "0"))
         cost_basis = avg_cost * balance
-        holding_hours = int(token.get("avg_holding_seconds", "0")) / 3600
+        holding_hours = int(float(token.get("avg_holding_seconds", "0"))) / 3600
 
         # Check cluster changes for held tokens
         try:

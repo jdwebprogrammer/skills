@@ -38,9 +38,13 @@ import os
 import sys
 import time
 import datetime
+from decimal import Decimal, getcontext
 
 import requests
 from dotenv import load_dotenv
+
+# Set decimal precision high enough for crypto
+getcontext().prec = 28
 
 # ---------------------------------------------------------------------------
 # Environment
@@ -71,9 +75,9 @@ parser = argparse.ArgumentParser(description="KryptoGO Swap Executor")
 parser.add_argument("token_mint", help="Token mint address to buy or sell")
 parser.add_argument(
     "amount",
-    type=float,
+    type=str,  # Capture as string to preserve precision for Decimal
     nargs="?",
-    default=0.1,
+    default="0.1",
     help="Amount in SOL (buy) or token units (sell). Default: 0.1 SOL",
 )
 parser.add_argument(
@@ -84,8 +88,8 @@ parser.add_argument(
 parser.add_argument(
     "--slippage",
     type=int,
-    default=300,
-    help="Slippage tolerance in basis points (default: 300 = 3%%)",
+    default=500,
+    help="Slippage tolerance in basis points (default: 500 = 5%%)",
 )
 parser.add_argument(
     "--max-impact",
@@ -117,16 +121,21 @@ token_symbol = token_info.get("symbol", "UNKNOWN")
 decimals = token_info.get("decimals", 6)
 current_price = token_info.get("price", 0)
 
+# Use Decimal for precise arithmetic
+amount_dec = Decimal(args.amount)
+
 if args.sell:
     input_mint = args.token_mint
     output_mint = SOL_MINT
-    amount = int(args.amount * (10 ** decimals))
-    print(f"=== SELL: {args.amount} {token_symbol} ({amount} raw units) → SOL ===")
+    # Exact calculation: amount * 10^decimals
+    amount_raw = int(amount_dec * (Decimal(10) ** decimals))
+    print(f"=== SELL: {args.amount} {token_symbol} ({amount_raw} raw units) → SOL ===")
 else:
     input_mint = SOL_MINT
     output_mint = args.token_mint
-    amount = int(args.amount * 1_000_000_000)  # SOL → lamports
-    print(f"=== BUY: {args.amount} SOL → {token_symbol} (price: ${current_price}) ===")
+    # Exact calculation: amount * 10^9 (SOL decimals)
+    amount_raw = int(amount_dec * Decimal(1_000_000_000))
+    print(f"=== BUY: {args.amount} SOL ({amount_raw} lamports) → {token_symbol} (price: ${current_price}) ===")
 
 print("\nStep 1: Building swap transaction...")
 swap_resp = requests.post(
@@ -135,7 +144,7 @@ swap_resp = requests.post(
     json={
         "input_mint": input_mint,
         "output_mint": output_mint,
-        "amount": amount,
+        "amount": amount_raw,
         "slippage_bps": args.slippage,
         "wallet_address": WALLET,
     },
@@ -236,10 +245,9 @@ if not args.sell:
     # BUY -> Create OPEN position
     
     # Calculate effective entry price in SOL (not USD)
-    # If we spent 0.1 SOL and got 1000 tokens, price = 0.1 / 1000 = 0.0001 SOL
     entry_price_sol = 0
     if estimated_out_amount > 0:
-        entry_price_sol = args.amount / estimated_out_amount
+        entry_price_sol = float(amount_dec) / estimated_out_amount
         
     new_trade = {
         "id": f"{iso_time}_{token_symbol}",
@@ -247,16 +255,18 @@ if not args.sell:
         "symbol": token_symbol,
         "chain_id": "501", # Default Solana
         "action": "BUY",
-        "amount_sol": args.amount,
+        "amount_sol": float(amount_dec),
         "token_amount": estimated_out_amount,
-        "price_at_entry": entry_price_sol,
+        "price_at_entry_sol": entry_price_sol,
+        "price_at_entry_usd": current_price, # USD price from API
         "tx_hash": tx_hash,
         "status": "OPEN",
         "timestamp": iso_time,
         "timestamp_ms": timestamp_ms
     }
     journal_data["trades"].append(new_trade)
-    print(f"\nLogged BUY trade to journal: {new_trade['id']} (Entry Price: {entry_price_sol:.9f} SOL)")
+    print(f"\nLogged BUY trade to journal: {new_trade['id']}")
+    print(f"  Entry Price: {entry_price_sol:.9f} SOL / ${current_price} USD")
 
 else:
     # SELL -> Find open position and close it (or just log sell event)

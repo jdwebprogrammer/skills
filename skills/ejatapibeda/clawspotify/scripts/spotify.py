@@ -72,6 +72,8 @@ def _load_session(identifier: str):
     except KeyError as e:
         _die(str(e))
 
+_active_ws_objects = []
+
 def _get_player(login, require_device: bool = True):
     """Create a Player instance, with friendly error for no active device."""
     try:
@@ -80,7 +82,9 @@ def _get_player(login, require_device: bool = True):
     except ImportError as e:
         _die(f"spotapi is not installed (or failed to import: {e}).")
     try:
-        return Player(login)
+        player = Player(login)
+        _active_ws_objects.append(player)
+        return player
     except LoginError as e:
         _die(
             "Spotify session expired or invalid (Status 401).\n"
@@ -106,7 +110,9 @@ def _get_status(login):
     except ImportError as e:
         _die(f"spotapi is not installed (or failed to import: {e}).")
     try:
-        return PlayerStatus(login)
+        status = PlayerStatus(login)
+        _active_ws_objects.append(status)
+        return status
     except LoginError as e:
         _die(
             "Spotify session expired or invalid (Status 401).\n"
@@ -538,5 +544,11 @@ def main():
         parser.print_help()
         sys.exit(1)
     handler(args)
+    # Clean up WebSocket connections so the process can exit
+    for obj in _active_ws_objects:
+        try:
+            obj.close()
+        except Exception:
+            pass
 if __name__ == "__main__":
     main()

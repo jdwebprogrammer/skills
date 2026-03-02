@@ -3,9 +3,15 @@
   "slug": "clawsec-nanoclaw",
   "displayName": "clawsec-nanoclaw",
   "latest": {
-    "version": "0.0.1",
-    "publishedAt": 1772014844583,
-    "commit": "https://github.com/openclaw/skills/commit/eb8693b94c6f1d23840c91b6a6df24185a566906"
+    "version": "0.0.2",
+    "publishedAt": 1772440338190,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.0.1",
+      "publishedAt": 1772014844583,
+      "commit": "https://github.com/openclaw/skills/commit/eb8693b94c6f1d23840c91b6a6df24185a566906"
+    }
+  ]
 }

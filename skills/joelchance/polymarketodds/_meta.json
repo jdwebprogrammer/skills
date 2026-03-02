@@ -3,11 +3,16 @@
   "slug": "polymarketodds",
   "displayName": "Polymarket",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1772309070664,
-    "commit": "https://github.com/openclaw/skills/commit/54fb9455b21ee72dfe09e265e778403604f67f08"
+    "version": "1.0.5",
+    "publishedAt": 1772465488009,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1772309070664,
+      "commit": "https://github.com/openclaw/skills/commit/54fb9455b21ee72dfe09e265e778403604f67f08"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1771954473851,

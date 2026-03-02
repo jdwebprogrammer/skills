@@ -1,11 +1,17 @@
 {
   "owner": "abhinavpgagi",
   "slug": "toingg-create-campaign",
-  "displayName": "Toingg Campaign Creator",
+  "displayName": "Toingg Ops Toolkit",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772041659312,
-    "commit": "https://github.com/openclaw/skills/commit/3bc2e47917543e0c23ba1f19574b0b94514eff6b"
+    "version": "1.1.0",
+    "publishedAt": 1772471111537,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772041659312,
+      "commit": "https://github.com/openclaw/skills/commit/3bc2e47917543e0c23ba1f19574b0b94514eff6b"
+    }
+  ]
 }

@@ -217,6 +217,10 @@ Use [mcporter](https://mcporter.dev) to bridge a device's MCP endpoint as a loca
 npx mcporter --url http://<device-ip>:19851/mcp --header "Authorization: Bearer <passcode>"
 ```
 
+## Rules
+
+- `connect-local-device` — Deploy the current app to a local LAN device, then monitor status, debug, and run automations via MCP
+
 ## Tips
 
 - Use `-j` or `--json` on most commands for JSON output

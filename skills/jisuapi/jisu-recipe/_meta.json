@@ -1,0 +1,11 @@
+{
+  "owner": "jisuapi",
+  "slug": "jisu-recipe",
+  "displayName": "极速数据菜谱大全",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772522838045,
+    "commit": null
+  },
+  "history": []
+}

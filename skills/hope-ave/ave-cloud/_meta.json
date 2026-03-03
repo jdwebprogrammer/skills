@@ -1,0 +1,11 @@
+{
+  "owner": "hope-ave",
+  "slug": "ave-cloud",
+  "displayName": "AVE Cloud Skill",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1772502919162,
+    "commit": null
+  },
+  "history": []
+}

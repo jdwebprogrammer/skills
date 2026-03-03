@@ -1,0 +1,11 @@
+{
+  "owner": "quarantiine",
+  "slug": "prompt-inject-removal",
+  "displayName": "Prompt Injection Removal",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772316950479,
+    "commit": null
+  },
+  "history": []
+}

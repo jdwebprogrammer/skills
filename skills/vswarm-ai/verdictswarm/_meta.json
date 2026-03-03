@@ -1,0 +1,11 @@
+{
+  "owner": "vswarm-ai",
+  "slug": "verdictswarm",
+  "displayName": "Verdictswarm",
+  "latest": {
+    "version": "1.0.4",
+    "publishedAt": 1772433477629,
+    "commit": null
+  },
+  "history": []
+}

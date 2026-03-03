@@ -1,0 +1,11 @@
+{
+  "owner": "jessewunderlich",
+  "slug": "deepgram-transcribe",
+  "displayName": "Deepgram Transcribe",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772501711515,
+    "commit": null
+  },
+  "history": []
+}

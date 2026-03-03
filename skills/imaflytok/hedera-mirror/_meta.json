@@ -1,0 +1,11 @@
+{
+  "owner": "imaflytok",
+  "slug": "hedera-mirror",
+  "displayName": "Hedera Mirror",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1772384522463,
+    "commit": null
+  },
+  "history": []
+}

@@ -28,7 +28,8 @@ function getSessionScope() {
   if (!raw) return null;
   // Sanitize: only allow alphanumeric, dash, underscore, dot (prevent path traversal).
   const safe = raw.replace(/[^a-zA-Z0-9_\-\.]/g, '_').slice(0, 128);
-  return safe || null;
+  if (!safe || /^\.{1,2}$/.test(safe) || /\.\./.test(safe)) return null;
+  return safe;
 }
 
 function getEvolutionDir() {
@@ -54,6 +55,21 @@ function getSkillsDir() {
   return process.env.SKILLS_DIR || path.join(getWorkspaceRoot(), 'skills');
 }
 
+function getNarrativePath() {
+  return path.join(getEvolutionDir(), 'evolution_narrative.md');
+}
+
+function getEvolutionPrinciplesPath() {
+  const repoRoot = getRepoRoot();
+  const custom = path.join(repoRoot, 'EVOLUTION_PRINCIPLES.md');
+  if (require('fs').existsSync(custom)) return custom;
+  return path.join(repoRoot, 'assets', 'gep', 'EVOLUTION_PRINCIPLES.md');
+}
+
+function getReflectionLogPath() {
+  return path.join(getEvolutionDir(), 'reflection_log.jsonl');
+}
+
 module.exports = {
   getRepoRoot,
   getWorkspaceRoot,
@@ -63,5 +79,8 @@ module.exports = {
   getGepAssetsDir,
   getSkillsDir,
   getSessionScope,
+  getNarrativePath,
+  getEvolutionPrinciplesPath,
+  getReflectionLogPath,
 };
 

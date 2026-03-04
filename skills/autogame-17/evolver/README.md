@@ -19,6 +19,11 @@ Capability Evolver is the core engine behind **[EvoMap](https://evomap.ai)**, a 
 
 Keywords: protocol-constrained evolution, audit trail, genes and capsules, prompt governance.
 
+## Prerequisites
+
+- **Node.js** >= 18
+- **Git** -- Required. Evolver uses git for rollback, blast radius calculation, and solidify. Running in a non-git directory will fail with a clear error message.
+
 ## Try It Now (Minimal)
 
 ```bash
@@ -221,14 +226,16 @@ The script automatically detects if compatible local skills (like `skills/feishu
 
 ## Acknowledgments
 
-- [onthebigtree](https://github.com/onthebigtree) -- Inspired the creation of evomap evolution network.
+- [onthebigtree](https://github.com/onthebigtree) -- Inspired the creation of evomap evolution network. Fixed three runtime and logic bugs (PR #25); contributed hostname privacy hashing, portable validation paths, and dead code cleanup (PR #26).
 - [lichunr](https://github.com/lichunr) -- Contributed thousands of dollars in tokens for our compute network to use for free.
 - [shinjiyu](https://github.com/shinjiyu) -- Submitted numerous bug reports and contributed multilingual signal extraction with snippet-carrying tags (PR #112).
 - [voidborne-d](https://github.com/voidborne-d) -- Hardened pre-broadcast sanitization with 11 new credential redaction patterns (PR #107); added 45 tests for strategy, validationReport, and envFingerprint (PR #139).
 - [blackdogcat](https://github.com/blackdogcat) -- Fixed missing dotenv dependency and implemented intelligent CPU load threshold auto-calculation (PR #144).
+- [LKCY33](https://github.com/LKCY33) -- Fixed .env loading path and directory permissions (PR #21).
+- [hendrixAIDev](https://github.com/hendrixAIDev) -- Fixed performMaintenance() running in dry-run mode (PR #68).
+- [toller892](https://github.com/toller892) -- Independently identified and reported the events.jsonl forbidden_paths bug (PR #149).
 - [upbit](https://github.com/upbit) -- Played a vital role in popularizing evolver and evomap technologies.
 - [Chi Jianqiang](https://mowen.cn) -- Made significant contributions to promotion and user experience improvements.
-- More contributors to be added.
 
 ## License
 

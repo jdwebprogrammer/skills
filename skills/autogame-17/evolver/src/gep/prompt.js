@@ -1,7 +1,10 @@
+const fs = require('fs');
 const { captureEnvFingerprint } = require('./envFingerprint');
 const { formatAssetPreview } = require('./assets');
-const { generateInnovationIdeas } = require('../ops/innovation'); // [2026-02-14] Innovation Catalyst Integration
-const { analyzeRecentHistory, OPPORTUNITY_SIGNALS } = require('./signals'); // [2026-02-14] Signal Analysis Integration
+const { generateInnovationIdeas } = require('../ops/innovation');
+const { analyzeRecentHistory, OPPORTUNITY_SIGNALS } = require('./signals');
+const { loadNarrativeSummary } = require('./narrativeMemory');
+const { getEvolutionPrinciplesPath } = require('./paths');
 
 /**
  * Build a minimal prompt for direct-reuse mode.
@@ -217,6 +220,29 @@ function buildLessonsBlock(hubLessons, signals) {
   }
   parts.push('  Apply relevant lessons. Ignore irrelevant ones.\n');
   return parts.join('\n');
+}
+
+function buildNarrativeBlock() {
+  try {
+    const narrative = loadNarrativeSummary(3000);
+    if (!narrative) return '';
+    return `\nContext [Evolution Narrative] (Recent decisions and outcomes -- learn from this history):\n${narrative}\n`;
+  } catch (_) {
+    return '';
+  }
+}
+
+function buildPrinciplesBlock() {
+  try {
+    const principlesPath = getEvolutionPrinciplesPath();
+    if (!fs.existsSync(principlesPath)) return '';
+    const content = fs.readFileSync(principlesPath, 'utf8');
+    if (!content.trim()) return '';
+    const trimmed = content.length > 2000 ? content.slice(0, 2000) + '\n...[TRUNCATED]' : content;
+    return `\nContext [Evolution Principles] (Guiding directives -- align your actions):\n${trimmed}\n`;
+  } catch (_) {
+    return '';
+  }
 }
 
 function buildGepPrompt({
@@ -485,7 +511,8 @@ Context [External Candidates]:
 ${externalCandidatesPreview || '(none)'}
 ${buildAntiPatternZone(failedCapsules, signals)}${buildLessonsBlock(hubLessons, signals)}
 ${historyBlock}
-
+${buildNarrativeBlock()}
+${buildPrinciplesBlock()}
 Context [Execution]:
 ${executionContext}
 
@@ -536,4 +563,4 @@ Rules:
   return basePrompt.slice(0, maxChars) + "\n...[TRUNCATED]...";
 }
 
-module.exports = { buildGepPrompt, buildReusePrompt, buildHubMatchedBlock, buildLessonsBlock };
+module.exports = { buildGepPrompt, buildReusePrompt, buildHubMatchedBlock, buildLessonsBlock, buildNarrativeBlock, buildPrinciplesBlock };

@@ -223,7 +223,7 @@ function buildDistillationPrompt(analysis, existingGenes, sampleCapsules) {
   });
 
   return [
-    'You are a Gene synthesis engine for the GEP (Gene Expression Protocol).',
+    'You are a Gene synthesis engine for the GEP (Genome Evolution Protocol).',
     '',
     'Analyze the following successful evolution capsules and extract a reusable Gene.',
     '',

@@ -96,6 +96,9 @@ function getNodeId() {
 // --- Base message builder ---
 
 function buildMessage(params) {
+  if (!params || typeof params !== 'object') {
+    throw new Error('buildMessage requires a params object');
+  }
   var messageType = params.messageType;
   var payload = params.payload;
   var senderId = params.senderId;
@@ -197,14 +200,18 @@ function buildPublishBundle(opts) {
 
 function buildFetch(opts) {
   var o = opts || {};
+  var fetchPayload = {
+    asset_type: o.assetType || null,
+    local_id: o.localId || null,
+    content_hash: o.contentHash || null,
+  };
+  if (Array.isArray(o.signals) && o.signals.length > 0) {
+    fetchPayload.signals = o.signals;
+  }
   return buildMessage({
     messageType: 'fetch',
     senderId: o.nodeId,
-    payload: {
-      asset_type: o.assetType || null,
-      local_id: o.localId || null,
-      content_hash: o.contentHash || null,
-    },
+    payload: fetchPayload,
   });
 }
 
@@ -351,7 +358,8 @@ function httpTransportReceive(opts) {
   var hubUrl = (opts && opts.hubUrl) || process.env.A2A_HUB_URL;
   if (!hubUrl) return Promise.resolve([]);
   var assetType = (opts && opts.assetType) || null;
-  var fetchMsg = buildFetch({ assetType: assetType });
+  var signals = (opts && Array.isArray(opts.signals)) ? opts.signals : null;
+  var fetchMsg = buildFetch({ assetType: assetType, signals: signals });
   var endpoint = hubUrl.replace(/\/+$/, '') + '/a2a/fetch';
   return fetch(endpoint, {
     method: 'POST',

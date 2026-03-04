@@ -2,11 +2,17 @@
 //
 // Flow: extractSignals() -> hubSearch(signals) -> if hit: reuse; if miss: normal evolve
 // Two modes: direct (skip local reasoning) | reference (inject into prompt as strong hint)
+//
+// Uses POST /a2a/fetch with signals field (protocol-native) instead of GET /a2a/assets/search.
+// This returns full payload (content, diff, strategy) in a single round-trip.
 
-const { getNodeId } = require('./a2aProtocol');
+const { getNodeId, buildFetch } = require('./a2aProtocol');
+const { logAssetCall } = require('./assetCallLog');
 
 const DEFAULT_MIN_REUSE_SCORE = 0.72;
 const DEFAULT_REUSE_MODE = 'reference'; // 'direct' | 'reference'
+const MAX_STREAK_CAP = 5;
+const TIMEOUT_REASON = 'hub_search_timeout';
 
 function getHubUrl() {
   return (process.env.A2A_HUB_URL || '').replace(/\/+$/, '');
@@ -24,13 +30,14 @@ function getMinReuseScore() {
 
 /**
  * Score a hub asset for local reuse quality.
- * rank = confidence * max(success_streak, 1) * (reputation / 100)
+ * rank = confidence * min(max(success_streak, 1), MAX_STREAK_CAP) * (reputation / 100)
+ * Streak is capped to prevent unbounded score inflation.
  */
 function scoreHubResult(asset) {
   const confidence = Number(asset.confidence) || 0;
-  const streak = Math.max(Number(asset.success_streak) || 0, 1);
-  // Reputation is included in asset from hub ranked endpoint; default 50 if missing
-  const reputation = Number(asset.reputation_score) || 50;
+  const streak = Math.min(Math.max(Number(asset.success_streak) || 0, 1), MAX_STREAK_CAP);
+  const repRaw = Number(asset.reputation_score);
+  const reputation = Number.isFinite(repRaw) ? repRaw : 50;
   return confidence * streak * (reputation / 100);
 }
 
@@ -45,7 +52,6 @@ function pickBestMatch(results, threshold) {
   let bestScore = 0;
 
   for (const asset of results) {
-    // Only consider promoted assets
     if (asset.status && asset.status !== 'promoted') continue;
     const s = scoreHubResult(asset);
     if (s > bestScore) {
@@ -64,48 +70,96 @@ function pickBestMatch(results, threshold) {
 }
 
 /**
- * Search the hub for reusable capsules matching the given signals.
+ * Search the hub for reusable assets matching the given signals.
+ * Uses POST /a2a/fetch with signals (protocol-native, returns full payload).
+ * Falls back to GET /a2a/assets/search if fetch fails.
  * Returns { hit: true, match, score, mode } or { hit: false }.
  */
 async function hubSearch(signals, opts) {
   const hubUrl = getHubUrl();
   if (!hubUrl) return { hit: false, reason: 'no_hub_url' };
 
-  const signalList = Array.isArray(signals) ? signals.filter(Boolean) : [];
+  const signalList = Array.isArray(signals)
+    ? signals.map(s => typeof s === 'string' ? s.trim() : '').filter(Boolean)
+    : [];
   if (signalList.length === 0) return { hit: false, reason: 'no_signals' };
 
   const threshold = (opts && Number.isFinite(opts.threshold)) ? opts.threshold : getMinReuseScore();
-  const limit = (opts && Number.isFinite(opts.limit)) ? opts.limit : 5;
   const timeout = (opts && Number.isFinite(opts.timeoutMs)) ? opts.timeoutMs : 8000;
 
   try {
-    const params = new URLSearchParams();
-    params.set('signals', signalList.join(','));
-    params.set('status', 'promoted');
-    params.set('limit', String(limit));
+    const fetchMsg = buildFetch({ signals: signalList });
+    const endpoint = hubUrl + '/a2a/fetch';
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
+    const timer = setTimeout(() => controller.abort(TIMEOUT_REASON), timeout);
 
-    const url = `${hubUrl}/a2a/assets/search?${params.toString()}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    const token = process.env.A2A_HUB_TOKEN;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(fetchMsg),
       signal: controller.signal,
     });
     clearTimeout(timer);
 
-    if (!res.ok) return { hit: false, reason: `hub_http_${res.status}` };
+    if (!res.ok) {
+      logAssetCall({
+        run_id: (opts && opts.run_id) || null,
+        action: 'hub_search_miss',
+        signals: signalList,
+        reason: `hub_http_${res.status}`,
+        via: 'fetch_with_signals',
+      });
+      return { hit: false, reason: `hub_http_${res.status}` };
+    }
 
     const data = await res.json();
-    const assets = Array.isArray(data.assets) ? data.assets : [];
+    const results = (data && data.payload && Array.isArray(data.payload.results))
+      ? data.payload.results
+      : [];
 
-    if (assets.length === 0) return { hit: false, reason: 'no_results' };
+    if (results.length === 0) {
+      logAssetCall({
+        run_id: (opts && opts.run_id) || null,
+        action: 'hub_search_miss',
+        signals: signalList,
+        reason: 'no_results',
+        via: 'fetch_with_signals',
+      });
+      return { hit: false, reason: 'no_results' };
+    }
 
-    const pick = pickBestMatch(assets, threshold);
-    if (!pick) return { hit: false, reason: 'below_threshold', candidates: assets.length };
+    const pick = pickBestMatch(results, threshold);
+    if (!pick) {
+      logAssetCall({
+        run_id: (opts && opts.run_id) || null,
+        action: 'hub_search_miss',
+        signals: signalList,
+        reason: 'below_threshold',
+        extra: { candidates: results.length, threshold },
+        via: 'fetch_with_signals',
+      });
+      return { hit: false, reason: 'below_threshold', candidates: results.length };
+    }
 
-    console.log(`[HubSearch] Hit: ${pick.match.asset_id || pick.match.local_id} (score=${pick.score}, mode=${pick.mode})`);
+    console.log(`[HubSearch] Hit via fetch+signals: ${pick.match.asset_id || 'unknown'} (score=${pick.score}, mode=${pick.mode})`);
+
+    logAssetCall({
+      run_id: (opts && opts.run_id) || null,
+      action: 'hub_search_hit',
+      asset_id: pick.match.asset_id || null,
+      asset_type: pick.match.asset_type || pick.match.type || null,
+      source_node_id: pick.match.source_node_id || null,
+      chain_id: pick.match.chain_id || null,
+      score: pick.score,
+      mode: pick.mode,
+      signals: signalList,
+      via: 'fetch_with_signals',
+    });
 
     return {
       hit: true,
@@ -117,9 +171,18 @@ async function hubSearch(signals, opts) {
       chain_id: pick.match.chain_id || null,
     };
   } catch (err) {
-    // Hub unreachable is non-fatal; fall through to normal evolve
-    console.log(`[HubSearch] Failed (non-fatal): ${err.message}`);
-    return { hit: false, reason: 'fetch_error', error: err.message };
+    const isTimeout = err.name === 'AbortError' || (err.cause && err.cause === TIMEOUT_REASON);
+    const reason = isTimeout ? 'timeout' : 'fetch_error';
+    console.log(`[HubSearch] Failed (non-fatal, ${reason}): ${err.message}`);
+    logAssetCall({
+      run_id: (opts && opts.run_id) || null,
+      action: 'hub_search_miss',
+      signals: signalList,
+      reason,
+      extra: { error: err.message },
+      via: 'fetch_with_signals',
+    });
+    return { hit: false, reason, error: err.message };
   }
 }
 

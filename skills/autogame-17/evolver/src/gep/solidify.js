@@ -17,6 +17,9 @@ const {
 const { computeAssetId, SCHEMA_VERSION } = require('./contentHash');
 const { captureEnvFingerprint } = require('./envFingerprint');
 const { buildValidationReport } = require('./validationReport');
+const { logAssetCall } = require('./assetCallLog');
+const { recordNarrative } = require('./narrativeMemory');
+const { isLlmReviewEnabled, runLlmReview } = require('./llmReview');
 
 function nowIso() {
   return new Date().toISOString();
@@ -701,10 +704,14 @@ function rollbackNewUntrackedFiles({ repoRoot, baselineUntracked }) {
   // This prevents "ghost skill directories" where mkdir succeeded but
   // file creation failed/was rolled back. Without this, empty dirs like
   // skills/anima/, skills/oblivion/ etc. accumulate after failed innovations.
+  // SAFETY: never remove top-level structural directories (skills/, src/, etc.)
+  // or critical protected directories. Only remove leaf subdirectories.
   var dirsToCheck = new Set();
   for (var di = 0; di < deleted.length; di++) {
     var dir = path.dirname(deleted[di]);
     while (dir && dir !== '.' && dir !== '/') {
+      var normalized = dir.replace(/\\/g, '/');
+      if (!normalized.includes('/')) break;
       dirsToCheck.add(dir);
       dir = path.dirname(dir);
     }
@@ -713,6 +720,7 @@ function rollbackNewUntrackedFiles({ repoRoot, baselineUntracked }) {
   var sortedDirs = Array.from(dirsToCheck).sort(function (a, b) { return b.length - a.length; });
   var removedDirs = [];
   for (var si = 0; si < sortedDirs.length; si++) {
+    if (isCriticalProtectedPath(sortedDirs[si] + '/')) continue;
     var dirAbs = path.join(repoRoot, sortedDirs[si]);
     try {
       var entries = fs.readdirSync(dirAbs);
@@ -957,8 +965,32 @@ function readRecentSessionInputs() {
   return { recentSessionTranscript, todayLog: todayLogContent, memorySnippet, userSnippet };
 }
 
+function isGitRepo(dir) {
+  try {
+    execSync('git rev-parse --git-dir', {
+      cwd: dir, encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'], timeout: 5000,
+    });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function solidify({ intent, summary, dryRun = false, rollbackOnFailure = true } = {}) {
   const repoRoot = getRepoRoot();
+
+  if (!isGitRepo(repoRoot)) {
+    console.error('[Solidify] FATAL: Not a git repository (' + repoRoot + ').');
+    console.error('[Solidify] Solidify requires git for rollback, diff capture, and blast radius.');
+    console.error('[Solidify] Run "git init && git add -A && git commit -m init" first.');
+    return {
+      ok: false,
+      status: 'failed',
+      failure_reason: 'not_a_git_repository',
+      event: null,
+    };
+  }
   const state = readStateForSolidify();
   const lastRun = state && state.last_run ? state.last_run : null;
   const genes = loadGenes();
@@ -1051,6 +1083,29 @@ function solidify({ intent, summary, dryRun = false, rollbackOnFailure = true } 
     );
     constraintCheck.ok = false;
     console.error(`[Solidify] CANARY FAILED: ${canary.err}`);
+  }
+
+  // Optional LLM review: when EVOLVER_LLM_REVIEW=true, submit diff for review.
+  let llmReviewResult = null;
+  if (constraintCheck.ok && validation.ok && protocolViolations.length === 0 && isLlmReviewEnabled()) {
+    try {
+      const reviewDiff = captureDiffSnapshot(repoRoot);
+      llmReviewResult = runLlmReview({
+        diff: reviewDiff,
+        gene: geneUsed,
+        signals,
+        mutation,
+      });
+      if (llmReviewResult && llmReviewResult.approved === false) {
+        constraintCheck.violations.push('llm_review_rejected: ' + (llmReviewResult.summary || 'no reason'));
+        constraintCheck.ok = false;
+        console.log('[LLMReview] Change REJECTED: ' + (llmReviewResult.summary || ''));
+      } else if (llmReviewResult) {
+        console.log('[LLMReview] Change approved (confidence: ' + (llmReviewResult.confidence || '?') + ')');
+      }
+    } catch (e) {
+      console.log('[LLMReview] Failed (non-fatal): ' + (e && e.message ? e.message : e));
+    }
   }
 
   // Build standardized ValidationReport (machine-readable, interoperable).
@@ -1212,7 +1267,12 @@ function solidify({ intent, summary, dryRun = false, rollbackOnFailure = true } 
 
   if (!dryRun && !success && rollbackOnFailure) {
     rollbackTracked(repoRoot);
-    rollbackNewUntrackedFiles({ repoRoot, baselineUntracked: lastRun && lastRun.baseline_untracked ? lastRun.baseline_untracked : [] });
+    // Only clean up new untracked files when a valid baseline exists.
+    // Without a baseline, we cannot distinguish pre-existing untracked files
+    // from AI-generated ones, so deleting would be destructive.
+    if (lastRun && Array.isArray(lastRun.baseline_untracked)) {
+      rollbackNewUntrackedFiles({ repoRoot, baselineUntracked: lastRun.baseline_untracked });
+    }
   }
 
   // Apply epigenetic marks to the gene based on outcome and environment
@@ -1253,6 +1313,21 @@ function solidify({ intent, summary, dryRun = false, rollbackOnFailure = true } 
     run_id: runId, at: ts, event_id: event.id, capsule_id: capsuleId, outcome: event.outcome,
   };
   if (!dryRun) writeStateForSolidify(state);
+
+  if (!dryRun) {
+    try {
+      recordNarrative({
+        gene: geneUsed,
+        signals,
+        mutation,
+        outcome: event.outcome,
+        blast,
+        capsule,
+      });
+    } catch (e) {
+      console.log('[Narrative] Record failed (non-fatal): ' + (e && e.message ? e.message : e));
+    }
+  }
 
   // Search-First Evolution: auto-publish eligible capsules to the Hub (as Gene+Capsule bundle).
   let publishResult = null;
@@ -1327,6 +1402,21 @@ function solidify({ intent, summary, dryRun = false, rollbackOnFailure = true } 
               });
           }
           publishResult = { attempted: true, asset_id: capsule.asset_id || capsule.id, bundle: true };
+          logAssetCall({
+            run_id: lastRun && lastRun.run_id ? lastRun.run_id : null,
+            action: 'asset_publish',
+            asset_id: capsule.asset_id || capsule.id,
+            asset_type: 'Capsule',
+            source_node_id: null,
+            chain_id: publishChainId || null,
+            signals: Array.isArray(capsule.trigger) ? capsule.trigger : [],
+            extra: {
+              source_type: sourceType,
+              reused_asset_id: reusedAssetId,
+              gene_id: publishGene && publishGene.id ? publishGene.id : null,
+              parent: parentRef || null,
+            },
+          });
         } else {
           publishResult = { attempted: false, reason: 'no_hub_url' };
         }
@@ -1340,6 +1430,14 @@ function solidify({ intent, summary, dryRun = false, rollbackOnFailure = true } 
         : sourceType === 'reused' ? 'skip_direct_reused_asset'
         : 'below_min_score';
       publishResult = { attempted: false, reason };
+      logAssetCall({
+        run_id: lastRun && lastRun.run_id ? lastRun.run_id : null,
+        action: 'asset_publish_skip',
+        asset_id: capsule.asset_id || capsule.id,
+        asset_type: 'Capsule',
+        reason,
+        signals: Array.isArray(capsule.trigger) ? capsule.trigger : [],
+      });
     }
   }
 
@@ -1452,6 +1550,7 @@ function solidify({ intent, summary, dryRun = false, rollbackOnFailure = true } 
 
 module.exports = {
   solidify,
+  isGitRepo,
   readStateForSolidify,
   writeStateForSolidify,
   isValidationCommandAllowed,

@@ -43,12 +43,16 @@ function acquireLock() {
   try {
     if (fs.existsSync(lockFile)) {
       const pid = parseInt(fs.readFileSync(lockFile, 'utf8').trim(), 10);
-      try {
-        process.kill(pid, 0); // Check if process exists
-        console.log(`[Singleton] Evolver loop already running (PID ${pid}). Exiting.`);
-        return false;
-      } catch (e) {
-        console.log(`[Singleton] Stale lock found (PID ${pid}). Taking over.`);
+      if (!Number.isFinite(pid) || pid <= 0) {
+        console.log('[Singleton] Corrupt lock file (invalid PID). Taking over.');
+      } else {
+        try {
+          process.kill(pid, 0);
+          console.log(`[Singleton] Evolver loop already running (PID ${pid}). Exiting.`);
+          return false;
+        } catch (e) {
+          console.log(`[Singleton] Stale lock found (PID ${pid}). Taking over.`);
+        }
       }
     }
     fs.writeFileSync(lockFile, String(process.pid));
@@ -88,7 +92,8 @@ async function main() {
         process.env.EVOLVE_BRIDGE = 'false';
         console.log('Loop mode enabled (internal daemon).');
 
-        const solidifyStatePath = path.join(__dirname, 'memory', 'evolution_solidify_state.json');
+        const { getEvolutionDir } = require('./src/gep/paths');
+        const solidifyStatePath = path.join(getEvolutionDir(), 'evolution_solidify_state.json');
 
         const minSleepMs = parseMs(process.env.EVOLVER_MIN_SLEEP_MS, 2000);
         const maxSleepMs = parseMs(process.env.EVOLVER_MAX_SLEEP_MS, 300000);
@@ -149,16 +154,20 @@ async function main() {
             const memMb = process.memoryUsage().rss / 1024 / 1024;
             if (cycleCount >= maxCyclesPerProcess || memMb > maxRssMb) {
               console.log(`[Daemon] Restarting self (cycles=${cycleCount}, rssMb=${memMb.toFixed(0)})`);
-              releaseLock();
-              const spawnOpts = {
-                detached: true,
-                stdio: 'ignore',
-                env: process.env,
-                windowsHide: true,
-              };
-              const child = spawn(process.execPath, [__filename, ...args], spawnOpts);
-              child.unref();
-              process.exit(0);
+              try {
+                const spawnOpts = {
+                  detached: true,
+                  stdio: 'ignore',
+                  env: process.env,
+                  windowsHide: true,
+                };
+                const child = spawn(process.execPath, [__filename, ...args], spawnOpts);
+                child.unref();
+                releaseLock();
+                process.exit(0);
+              } catch (spawnErr) {
+                console.error('[Daemon] Spawn failed, continuing current process:', spawnErr.message);
+              }
             }
           }
 
@@ -268,15 +277,64 @@ async function main() {
       process.exit(2);
     }
 
+  } else if (command === 'asset-log') {
+    const { summarizeCallLog, readCallLog, getLogPath } = require('./src/gep/assetCallLog');
+
+    const runIdFlag = args.find(a => typeof a === 'string' && a.startsWith('--run='));
+    const actionFlag = args.find(a => typeof a === 'string' && a.startsWith('--action='));
+    const lastFlag = args.find(a => typeof a === 'string' && a.startsWith('--last='));
+    const sinceFlag = args.find(a => typeof a === 'string' && a.startsWith('--since='));
+    const jsonMode = args.includes('--json');
+
+    const opts = {};
+    if (runIdFlag) opts.run_id = runIdFlag.slice('--run='.length);
+    if (actionFlag) opts.action = actionFlag.slice('--action='.length);
+    if (lastFlag) opts.last = parseInt(lastFlag.slice('--last='.length), 10);
+    if (sinceFlag) opts.since = sinceFlag.slice('--since='.length);
+
+    if (jsonMode) {
+      const entries = readCallLog(opts);
+      console.log(JSON.stringify(entries, null, 2));
+    } else {
+      const summary = summarizeCallLog(opts);
+      console.log(`\n[Asset Call Log] ${getLogPath()}`);
+      console.log(`  Total entries: ${summary.total_entries}`);
+      console.log(`  Unique assets: ${summary.unique_assets}`);
+      console.log(`  Unique runs:   ${summary.unique_runs}`);
+      console.log(`  By action:`);
+      for (const [action, count] of Object.entries(summary.by_action)) {
+        console.log(`    ${action}: ${count}`);
+      }
+      if (summary.entries.length > 0) {
+        console.log(`\n  Recent entries:`);
+        const show = summary.entries.slice(-10);
+        for (const e of show) {
+          const ts = e.timestamp ? e.timestamp.slice(0, 19) : '?';
+          const assetShort = e.asset_id ? e.asset_id.slice(0, 20) + '...' : '(none)';
+          const sigPreview = Array.isArray(e.signals) ? e.signals.slice(0, 3).join(', ') : '';
+          console.log(`    [${ts}] ${e.action || '?'}  asset=${assetShort}  score=${e.score || '-'}  mode=${e.mode || '-'}  signals=[${sigPreview}]  run=${e.run_id || '-'}`);
+        }
+      } else {
+        console.log('\n  No entries found.');
+      }
+      console.log('');
+    }
+
   } else {
-    console.log(`Usage: node index.js [run|/evolve|solidify|distill] [--loop]
+    console.log(`Usage: node index.js [run|/evolve|solidify|distill|asset-log] [--loop]
   - solidify flags:
     - --dry-run
     - --no-rollback
     - --intent=repair|optimize|innovate
     - --summary=...
   - distill flags:
-    - --response-file=<path>  (LLM response file for skill distillation)`);
+    - --response-file=<path>  (LLM response file for skill distillation)
+  - asset-log flags:
+    - --run=<run_id>           (filter by run ID)
+    - --action=<action>        (filter: hub_search_hit, hub_search_miss, asset_reuse, asset_reference, asset_publish, asset_publish_skip)
+    - --last=<N>               (show last N entries)
+    - --since=<ISO_date>       (entries after date)
+    - --json                   (raw JSON output)`);
   }
 }
 

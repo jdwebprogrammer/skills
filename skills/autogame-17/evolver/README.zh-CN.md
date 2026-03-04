@@ -27,6 +27,11 @@ Capability Evolver 是 **[EvoMap](https://evomap.ai)** 的核心引擎。EvoMap 
 - **动态集成**：自动检测并使用本地工具，如果不存在则回退到通用模式。
 - **持续循环模式**：持续运行的自我进化循环。
 
+## 前置条件
+
+- **Node.js** >= 18
+- **Git** -- 必需。Evolver 依赖 git 进行回滚、变更范围计算和固化（solidify）。在非 git 目录中运行会直接报错并退出。
+
 ## 使用方法
 
 ### 标准运行（自动化）
@@ -190,13 +195,16 @@ MAJOR.MINOR.PATCH
 
 ## 鸣谢
 
-- [onthebigtree](https://github.com/onthebigtree) -- 启发了 evomap 进化网络的诞生。
+- [onthebigtree](https://github.com/onthebigtree) -- 启发了 evomap 进化网络的诞生。修复了三个运行时逻辑 bug (PR #25)；贡献了主机名隐私哈希、可移植验证路径和死代码清理 (PR #26)。
 - [lichunr](https://github.com/lichunr) -- 提供了数千美金 Token 供算力网络免费使用。
 - [shinjiyu](https://github.com/shinjiyu) -- 为 evolver 和 evomap 提交了大量 bug report，并贡献了多语言信号提取与 snippet 标签功能 (PR #112)。
-- [voidborne-d](https://github.com/voidborne-d) -- 为预广播脱敏层新增 11 种凭证检测模式，强化安全防护 (PR #107)。
+- [voidborne-d](https://github.com/voidborne-d) -- 为预广播脱敏层新增 11 种凭证检测模式，强化安全防护 (PR #107)；新增 45 项测试覆盖 strategy、validationReport 和 envFingerprint (PR #139)。
+- [blackdogcat](https://github.com/blackdogcat) -- 修复 dotenv 缺失依赖并实现智能 CPU 负载阈值自动计算 (PR #144)。
+- [LKCY33](https://github.com/LKCY33) -- 修复 .env 加载路径和目录权限问题 (PR #21)。
+- [hendrixAIDev](https://github.com/hendrixAIDev) -- 修复 dry-run 模式下 performMaintenance() 仍执行的问题 (PR #68)。
+- [toller892](https://github.com/toller892) -- 独立发现并报告了 events.jsonl forbidden_paths 冲突 bug (PR #149)。
 - [upbit](https://github.com/upbit) -- 在 evolver 和 evomap 技术的普及中起到了至关重要的作用。
 - [池建强](https://mowen.cn) -- 在传播和用户体验改进过程中做出了巨大贡献。
-- 其余贡献者扩充中。
 
 ## 许可证
 MIT

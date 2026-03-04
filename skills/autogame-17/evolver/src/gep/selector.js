@@ -3,6 +3,7 @@ function matchPatternToSignals(pattern, signals) {
   const p = String(pattern);
   const sig = signals.map(s => String(s));
 
+  // Regex pattern: /body/flags
   const regexLike = p.length >= 2 && p.startsWith('/') && p.lastIndexOf('/') > 0;
   if (regexLike) {
     const lastSlash = p.lastIndexOf('/');
@@ -14,6 +15,12 @@ function matchPatternToSignals(pattern, signals) {
     } catch (e) {
       // fallback to substring
     }
+  }
+
+  // Multi-language alias: "en_term|zh_term|ja_term" -- any branch matching = hit
+  if (p.includes('|') && !p.startsWith('/')) {
+    const branches = p.split('|').map(b => b.trim().toLowerCase()).filter(Boolean);
+    return branches.some(needle => sig.some(s => s.toLowerCase().includes(needle)));
   }
 
   const needle = p.toLowerCase();
@@ -67,6 +74,7 @@ function computeDriftIntensity(opts) {
 }
 
 function selectGene(genes, signals, opts) {
+  const genesList = Array.isArray(genes) ? genes : [];
   const bannedGeneIds = opts && opts.bannedGeneIds ? opts.bannedGeneIds : new Set();
   const driftEnabled = !!(opts && opts.driftEnabled);
   const preferredGeneId = opts && typeof opts.preferredGeneId === 'string' ? opts.preferredGeneId : null;
@@ -75,14 +83,14 @@ function selectGene(genes, signals, opts) {
   var driftIntensity = computeDriftIntensity({
     driftEnabled: driftEnabled,
     effectivePopulationSize: opts && opts.effectivePopulationSize,
-    genePoolSize: genes ? genes.length : 0,
+    genePoolSize: genesList.length,
   });
   var useDrift = driftEnabled || driftIntensity > 0.15;
 
   var DISTILLED_PREFIX = 'gene_distilled_';
   var DISTILLED_SCORE_FACTOR = 0.8;
 
-  const scored = genes
+  const scored = genesList
     .map(g => {
       var s = scoreGene(g, signals);
       if (s > 0 && g.id && String(g.id).startsWith(DISTILLED_PREFIX)) s *= DISTILLED_SCORE_FACTOR;

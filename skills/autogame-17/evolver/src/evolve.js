@@ -18,6 +18,7 @@ const {
 const { selectGeneAndCapsule, matchPatternToSignals } = require('./gep/selector');
 const { buildGepPrompt, buildReusePrompt, buildHubMatchedBlock } = require('./gep/prompt');
 const { hubSearch } = require('./gep/hubSearch');
+const { logAssetCall } = require('./gep/assetCallLog');
 const { extractCapabilityCandidates, renderCandidatesPreview } = require('./gep/candidates');
 const memoryAdapter = require('./gep/memoryGraphAdapter');
 const {
@@ -35,6 +36,8 @@ const { buildMutation, isHighRiskMutationAllowed } = require('./gep/mutation');
 const { selectPersonalityForRun } = require('./gep/personality');
 const { clip, writePromptArtifact, renderSessionsSpawnCall } = require('./gep/bridge');
 const { getEvolutionDir } = require('./gep/paths');
+const { shouldReflect, buildReflectionContext, recordReflection } = require('./gep/reflection');
+const { loadNarrativeSummary } = require('./gep/narrativeMemory');
 
 const REPO_ROOT = getRepoRoot();
 
@@ -744,6 +747,19 @@ async function run() {
 
   delete process.env.FORCE_INNOVATION;
 
+  // SAFEGUARD: Git repository check.
+  // Solidify, rollback, and blast radius all depend on git. Without a git repo
+  // these operations silently produce empty results, leading to data loss.
+  try {
+    execSync('git rev-parse --git-dir', { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 5000 });
+  } catch (_) {
+    console.error('[Evolver] FATAL: Not a git repository (' + REPO_ROOT + ').');
+    console.error('[Evolver] Evolver requires git for rollback, blast radius calculation, and solidify.');
+    console.error('[Evolver] Run "git init && git add -A && git commit -m init" in your project root, then try again.');
+    process.exitCode = 1;
+    return;
+  }
+
   var dormantHypothesis = readDormantHypothesis();
   if (dormantHypothesis) {
     console.log('[DormantHypothesis] Recovered partial state from previous backoff: ' + (dormantHypothesis.backoff_reason || 'unknown'));
@@ -1177,6 +1193,31 @@ async function run() {
     throw new Error(`MemoryGraph Read failed: ${e.message}`);
   }
 
+  // Reflection Phase: periodically pause to assess evolution strategy.
+  try {
+    const cycleState = fs.existsSync(STATE_FILE) ? JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) : {};
+    const cycleCount = cycleState.cycleCount || 0;
+    if (shouldReflect({ cycleCount, recentEvents })) {
+      const narrativeSummary = loadNarrativeSummary(3000);
+      const reflectionCtx = buildReflectionContext({
+        recentEvents,
+        signals,
+        memoryAdvice,
+        narrative: narrativeSummary,
+      });
+      recordReflection({
+        cycle_count: cycleCount,
+        signals_snapshot: signals.slice(0, 20),
+        preferred_gene: memoryAdvice && memoryAdvice.preferredGeneId ? memoryAdvice.preferredGeneId : null,
+        banned_genes: memoryAdvice && Array.isArray(memoryAdvice.bannedGeneIds) ? memoryAdvice.bannedGeneIds : [],
+        context_preview: reflectionCtx.slice(0, 1000),
+      });
+      console.log(`[Reflection] Strategic reflection recorded at cycle ${cycleCount}.`);
+    }
+  } catch (e) {
+    console.log('[Reflection] Failed (non-fatal): ' + (e && e.message ? e.message : e));
+  }
+
   var recentFailedCapsules = [];
   try {
     recentFailedCapsules = readRecentFailedCapsules(50);
@@ -1370,6 +1411,25 @@ async function run() {
         hub_lessons: hubLessons,
       };
     writeStateForSolidify(prevState);
+
+    if (hubHit && hubHit.hit) {
+      const assetAction = hubHit.mode === 'direct' ? 'asset_reuse' : 'asset_reference';
+      logAssetCall({
+        run_id: runId,
+        action: assetAction,
+        asset_id: hubHit.asset_id || null,
+        asset_type: hubHit.match && hubHit.match.type ? hubHit.match.type : null,
+        source_node_id: hubHit.source_node_id || null,
+        chain_id: hubHit.chain_id || null,
+        score: hubHit.score || null,
+        mode: hubHit.mode,
+        signals: Array.isArray(signals) ? signals : [],
+        extra: {
+          selected_gene_id: selectedGene && selectedGene.id ? selectedGene.id : null,
+          task_id: activeTask ? (activeTask.id || activeTask.task_id || null) : null,
+        },
+      });
+    }
   } catch (e) {
     console.error(`[SolidifyState] Write failed: ${e.message}`);
   }

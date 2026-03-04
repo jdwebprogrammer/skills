@@ -517,8 +517,6 @@ def format_token_data_for_agent(t, score, risk_level, risks, conviction):
 
     return "\n".join(message_parts)
 
-    return "\n".join(message_parts)
-
 
 async def main():
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Meme Scanner 启动...", file=sys.stderr)
@@ -585,6 +583,16 @@ async def main():
     print(f"[{datetime.now().strftime('%H:%M:%S')}] 筛选通过 {len(qualified)} 个代币", file=sys.stderr)
     
     qualified.sort(key=lambda t: t['__score'], reverse=True)
+    
+    # 保存已扫描记录
+    save_scanned(scanned)
+    
+    # 生成所有符合条件的代币消息（Early Score >= 8）
+    messages_to_send = []
+    for t in qualified:
+        if t['__score'] >= 8:  # 只推送 Early Score >= 8 的代币
+            msg = format_token_data_for_agent(t, t['__score'], t['__risk_level'], t['__risks'], t['__conviction'])
+            messages_to_send.append(msg)
     
     # 收集所有符合条件的代币消息
     if messages_to_send:

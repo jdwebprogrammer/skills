@@ -3,9 +3,15 @@
   "slug": "meme-scanner",
   "displayName": "Meme Scanner",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1772451531258,
-    "commit": "https://github.com/openclaw/skills/commit/8fb493b8219411170f5f5efbc9b61e26efca7d7f"
+    "version": "1.1.0",
+    "publishedAt": 1772595767713,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1772451531258,
+      "commit": "https://github.com/openclaw/skills/commit/8fb493b8219411170f5f5efbc9b61e26efca7d7f"
+    }
+  ]
 }

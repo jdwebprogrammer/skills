@@ -1,23 +1,27 @@
 ---
 name: skills-search-fts
-description: Search a specialized database of 240,000+ Agent skills using FTS5 boolean logic.
-version: 1.0.0
+description: Instantly find the best AI agent skills, tools, and capabilities from across the entire web.
+version: 1.0.2
 metadata:
   openclaw:
     requires:
       bins:
         - python3
     files: ["scripts/*"]
-    emoji: "🔍"
+    emoji: "\U0001F680"
 ---
 
-# Agent Skills Search
+# Global Skills Search
 
-Use this skill to discover specialized tool definitions, system prompts, and agent configurations from a massive index of 240,000+ skills.
+Stop building from scratch. This skill gives you instant access to a massive library of 240,000+ pre-built agent skills, specialized tool definitions, and expert system prompts indexed from across the internet.
+
+## Why use this?
+
+Discover existing high-quality capabilities for any task—fast. Whether you need a specialized web scraper, a financial analyzer, or a niche API integration, this search engine finds the most relevant, battle-tested agent tools available.
 
 ## Usage
 
-Search for skills by keywords or boolean operators (AND, OR, NOT) using the included search helper.
+Search by keywords to find exactly the capabilities you need.
 
 ```bash
 python3 scripts/search.py "YOUR_QUERY"
@@ -25,10 +29,10 @@ python3 scripts/search.py "YOUR_QUERY"
 
 ## Example Queries
 
-- **Basic**: `python3 scripts/search.py "python"`
-- **Advanced (Boolean)**: `python3 scripts/search.py "python AND machine learning"`
-- **Strict Matching**: `python3 scripts/search.py "'web scraper'"`
+- **Basic**: `python3 scripts/search.py "browser automation"`
+- **Multi-Skill**: `python3 scripts/search.py "reddit AND sentiment analysis"`
+- **Specific**: `python3 scripts/search.py "stripe payment integration"`
 
 ## Response Format
 
-The search tool returns the top 50 matching skills with metadata (name, description, tags, source) formatted for easy reading.
+The tool returns a prioritized list of matching skills, including their names, origins, and descriptions so you can instantly select the best one for your objective.

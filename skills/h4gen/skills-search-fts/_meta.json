@@ -1,11 +1,17 @@
 {
   "owner": "h4gen",
   "slug": "skills-search-fts",
-  "displayName": "Skills Search",
+  "displayName": "Global Skills Search",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772620058382,
-    "commit": "https://github.com/openclaw/skills/commit/4ad368ebb1e5a6cc9f9eb19ba3ba8d3d6df9cbd8"
+    "version": "1.0.2",
+    "publishedAt": 1772620196485,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772620058382,
+      "commit": "https://github.com/openclaw/skills/commit/4ad368ebb1e5a6cc9f9eb19ba3ba8d3d6df9cbd8"
+    }
+  ]
 }

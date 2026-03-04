@@ -34,22 +34,25 @@ def search_skills(query):
 
 def format_results(data):
     if not data or 'results' not in data:
-        print("No results found.")
+        print("No matching skills found in the global registry.")
         return
 
-    print(f"\nFound {data.get('count', 0)} results for: '{data.get('query')}'\n")
-    print("-" * 60)
+    count = data.get('count', 0)
+    query = data.get('query', '')
+    print(f"\n\U0001F680 Discovered {count} skills/capabilities for: '{query}'\n")
+    print("=" * 70)
     
     for i, result in enumerate(data['results'], 1):
         name = result.get('name', 'N/A')
         source = result.get('source', 'N/A')
-        desc = result.get('description', '')
-        if len(desc) > 150:
-            desc = desc[:147] + "..."
+        desc = result.get('description', 'No description provided.')
+        if len(desc) > 200:
+            desc = desc[:197] + "..."
             
-        print(f"{i}. {name} (via {source})")
-        print(f"   {desc}")
-        print("-" * 60)
+        print(f"[{i}] {name}")
+        print(f"    Description: {desc}")
+        print(f"    Origin: {source}")
+        print("-" * 70)
 
 def main():
     if len(sys.argv) < 2:

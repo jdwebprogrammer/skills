@@ -3,13 +3,15 @@ name: octoflow
 display_name: OctoFlow
 description: >
   Use when the user wants to run GPU-accelerated computations, analyze data,
-  process images, train ML models, or generate code from natural language.
+  process images/audio/video, train ML models, or generate code from natural language.
   OctoFlow turns English task descriptions into GPU programs via Vulkan.
   Also runs as an MCP server (`octoflow mcp-serve`) with 7 structured tools.
   No Python, no CUDA, no dependencies — single 3.2 MB binary.
+  57 stdlib algorithm modules (sort, search, graph, matrix, stats, DSP, etc.).
+  18 multimedia modules (audio DSP, image transforms, video timeline).
   Use for: "sort a million numbers", "cluster this CSV", "blur this image",
-  "plot my data", "calculate statistics", "run regression".
-version: 1.3.3
+  "plot my data", "calculate statistics", "run regression", "process audio".
+version: 1.4.0
 metadata:
   openclaw:
     emoji: "\U0001F419"
@@ -22,7 +24,7 @@ metadata:
         url: https://github.com/octoflow-lang/octoflow/releases/latest
         bins: [octoflow]
         label: "Download OctoFlow from GitHub Releases (3.2 MB, zero dependencies)"
-    os: [linux, win32]
+    os: [linux, win32, darwin]
     always: false
 tags: [gpu, vulkan, compute, data-analysis, image-processing,
        machine-learning, programming-language, natural-language]
@@ -158,14 +160,14 @@ octoflow chat "load data.csv, compute Pearson correlation between col1 and col2"
 | Feature | Detail |
 |---------|--------|
 | Builtins | 207 built-in functions |
-| Stdlib | 246 modules across 18 domains |
-| GPU kernels | 102 Vulkan compute shaders |
+| Stdlib | 303 modules across 20 domains |
+| GPU kernels | 113 Vulkan compute shaders |
 | GPU support | Any Vulkan GPU (NVIDIA, AMD, Intel) |
 | Binary size | 3.2 MB, zero dependencies |
 | Chat mode | English to code with auto-fix loop (max 3 retries) |
 | Errors | 69 structured error codes with auto-fix suggestions |
 | MCP Server | 7 structured tools via JSON-RPC 2.0 |
-| Platforms | Windows, Linux |
+| Platforms | Windows, Linux, macOS (Apple Silicon) |
 
 ## Data Storage
 
@@ -185,10 +187,11 @@ Contents: which stdlib modules you use frequently and corrections from previous 
 
 | Platform | File | SHA-256 |
 |----------|------|---------|
-| Windows x64 | [octoflow-v1.3.0-x86_64-windows.zip](https://github.com/octoflow-lang/octoflow/releases/download/v1.3.0/octoflow-v1.3.0-x86_64-windows.zip) | `84753c206a1c238b` |
-| Linux x64 | [octoflow-v1.3.0-x86_64-linux.tar.gz](https://github.com/octoflow-lang/octoflow/releases/download/v1.3.0/octoflow-v1.3.0-x86_64-linux.tar.gz) | `4630ee16ec04f61f` |
+| Windows x64 | [octoflow-v1.4.0-x86_64-windows.zip](https://github.com/octoflow-lang/octoflow/releases/download/v1.4.0/octoflow-v1.4.0-x86_64-windows.zip) | See SHA256SUMS.txt |
+| Linux x64 | [octoflow-v1.4.0-x86_64-linux.tar.gz](https://github.com/octoflow-lang/octoflow/releases/download/v1.4.0/octoflow-v1.4.0-x86_64-linux.tar.gz) | See SHA256SUMS.txt |
+| macOS (Apple Silicon) | [octoflow-v1.4.0-aarch64-macos.tar.gz](https://github.com/octoflow-lang/octoflow/releases/download/v1.4.0/octoflow-v1.4.0-aarch64-macos.tar.gz) | See SHA256SUMS.txt |
 
-Verify: `sha256sum octoflow-v1.3.0-*` (full checksums in [SHA256SUMS.txt](https://github.com/octoflow-lang/octoflow/releases/download/v1.3.0/SHA256SUMS.txt)).
+Verify: `sha256sum octoflow-v1.4.0-*` (full checksums in [SHA256SUMS.txt](https://github.com/octoflow-lang/octoflow/releases/download/v1.4.0/SHA256SUMS.txt)).
 
 Unzip/extract, add to PATH. No installer needed.
 

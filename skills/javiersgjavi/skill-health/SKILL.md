@@ -9,6 +9,8 @@ description: "Analyze wearable health CSV exports (steps, heart rate, sleep, cal
 
 Run analysis scripts from `scripts/` with a `--data-path` (ZIP or folder) or `--data-dir` (directory holding health_data_*). Each script prints JSON to stdout and can also write a file with `--output-dir`.
 
+Pass `--timezone` (IANA, e.g. `Europe/Madrid`, `America/New_York`) to interpret naive CSV timestamps correctly before UTC serialization.
+
 Minimal examples:
 
 ```bash

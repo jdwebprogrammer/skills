@@ -1,11 +1,17 @@
 {
   "owner": "javiersgjavi",
   "slug": "skill-health",
-  "displayName": "skill-health",
+  "displayName": "Skill Health",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772148911425,
-    "commit": "https://github.com/openclaw/skills/commit/7ef4b50d24b32c44147cb46efd2c70c1c8cbe764"
+    "version": "1.0.1",
+    "publishedAt": 1772620766591,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772148911425,
+      "commit": "https://github.com/openclaw/skills/commit/7ef4b50d24b32c44147cb46efd2c70c1c8cbe764"
+    }
+  ]
 }

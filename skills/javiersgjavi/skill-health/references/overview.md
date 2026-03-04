@@ -17,6 +17,7 @@
 - HR zones computed from inter-sample intervals (not uniform sampling).
 - `hr_range_during_sleep` is a proxy, not clinical HRV.
 - Sleep window uses last 30h by default; metrics include suffix `last_{window_hours}h`.
+- Timezone for naive timestamps is configurable via `--timezone` / `SKILL_HEALTH_TIMEZONE`.
 
 ## Output format (compact JSON)
 

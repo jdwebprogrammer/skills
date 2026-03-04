@@ -4,11 +4,18 @@ Helpers for building JSON report payloads: time windows, metric dicts, numeric s
 
 from __future__ import annotations
 
+import logging
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
+DEFAULT_LOCAL_TZ = "UTC"
+TIMEZONE_ENV_VAR = "SKILL_HEALTH_TIMEZONE"
 
 
 @dataclass
@@ -20,11 +27,26 @@ class TimeWindow:
     resolution: str
 
 
+def _resolve_local_timezone() -> ZoneInfo:
+    """Resolve local timezone from env; fallback to UTC if invalid or missing."""
+    timezone_name = os.getenv(TIMEZONE_ENV_VAR, DEFAULT_LOCAL_TZ)
+    try:
+        return ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError:
+        logger.warning(
+            "Invalid timezone '%s' in %s. Falling back to %s.",
+            timezone_name,
+            TIMEZONE_ENV_VAR,
+            DEFAULT_LOCAL_TZ,
+        )
+        return ZoneInfo(DEFAULT_LOCAL_TZ)
+
+
 def datetime_to_iso(dt: datetime) -> str:
-    """Return compact ISO string (minutes precision); use UTC if naive."""
+    """Return compact ISO string (minutes precision); treat naive datetimes as local time."""
     normalized = dt.replace(second=0, microsecond=0)
     if normalized.tzinfo is None:
-        normalized = normalized.replace(tzinfo=timezone.utc)
+        normalized = normalized.replace(tzinfo=_resolve_local_timezone())
     return normalized.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
 
 

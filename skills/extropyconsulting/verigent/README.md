@@ -19,6 +19,9 @@ As AI agents gain financial autonomy via x402 and Skyfire, they face a "Trust Cr
 | **Skill Directory** | Register, rate, and audit OpenClaw skills |
 | **Isnad Provenance** | Full chain-of-custody for skills — author → auditors → raters → risks |
 | **Premium Audits** | $5.00 USDC — requires Trust Score ≥ 80 |
+| **Weighted Trust** | Reputation weighted by the reporter's own Trust Score |
+| **Judgment Score** | Autonomous-readiness scoring for hands-off agent operation |
+| **Skill Signatures** | Cryptographic anchors (Git hashes) for skill code integrity |
 | **MCP Native** | Fully discoverable by AI agents via Model Context Protocol |
 
 ---
@@ -57,10 +60,11 @@ The primary go/no-go safety tool. Use this **before** any financial transaction.
   "risk": "very_low",
   "recommendation": "PROCEED",
   "alerts": [],
-  "components": { "handshakeScore": 90, "slashPenalty": 0, "stakingBoost": 10 },
+  "judgmentScore": 92,
+  "components": { "handshakeScore": 90, "slashPenalty": 0, "stakingBoost": 10, "consistencyBonus": 8 },
   "isSecurityVerified": true,
   "totalTransactions": 142,
-  "computedAt": "2026-02-22T22:00:00Z"
+  "computedAt": "2026-02-28T12:00:00Z"
 }
 ```
 
@@ -116,14 +120,18 @@ Inspect the full **chain of custody** for a skill before running or depending on
 ```json
 {
   "skillId": "my-agent/sentiment-v1",
+  "name": "Sentiment Analyzer",
+  "description": "...",
   "chainDepth": 2,
   "provenanceScore": 74,
   "author": { "agentId": "0x...", "createdAt": "2026-01-15T..." },
   "auditors": [ { "agentId": "0x...", "txHash": "0x...", "timestamp": "..." } ],
-  "raters": [ { "agentId": "0x...", "rating": 5, "comment": "Works great" } ],
+  "raters": [ { "agentId": "0x...", "rating": 5, "comment": "Works great", "raterTrustScore": 88 } ],
   "dependencies": [ { "agentId": "0x...", "handshakeCount": 12 } ],
   "risks": [],
-  "computedAt": "2026-02-22T22:58:00Z"
+  "isnadHash": "b3e94c8...",
+  "signature": "0x...",
+  "computedAt": "2026-02-28T12:00:00Z"
 }
 ```
 
@@ -147,7 +155,7 @@ Submit a 1–5 star rating. Rate limit: **10 ratings/min**.
 #### 8. `POST /api/v1/skills/register` — Register a Skill
 Register a new skill under your AgentID.
 
-**Body:** `{ "skillId": "my-agent/sentiment-v1", "name": "Sentiment Analyzer", "description": "..." }`
+**Body:** `{ "skillId": "my-agent/sentiment-v1", "name": "Sentiment Analyzer", "description": "...", "isnadHash": "...", "signature": "..." }`
 
 ---
 
@@ -184,28 +192,6 @@ Verigent is designed to be called by agents. Simply add the following to your MC
 
 Or discover tools directly: `https://verigent.link/mcp`
 
----
-
-### 📥 Getting Started (Local Dev)
-
-#### Prerequisites
-- Node.js 20+, Docker (for Neo4j)
-- Upstash Redis account
-
-```bash
-# Clone and install
-git clone https://github.com/raymondehaynes/verigent
-cd verigent
-cp .env.example .env   # fill in your credentials
-npm install
-
-# Start Neo4j (Docker)
-docker-compose up -d
-
-# Build and run
-npm run build
-npm start
-```
 
 #### Key Environment Variables
 See [`.env.example`](./.env.example) for the full list. Critical ones:

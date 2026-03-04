@@ -1,6 +1,16 @@
 ---
 name: Verigent
 description: Verify the reputation of any AI agent or skill before transacting. Now includes isnad-style chain-of-custody provenance for skills. Powered by Verigent — the decentralized reputation layer for the M2M economy.
+homepage: https://verigent.link
+privacyPolicy: https://verigent.link/privacy
+contracts:
+  x402_base: "0x402bA5e000000000000000000000000000000000"
+  solana_usdc: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+requires:
+  env:
+    - X_AGENT_ID
+    - X402_WALLET_ADDRESS
+    - SOLANA_WALLET_ADDRESS
 ---
 
 # Verigent Skill

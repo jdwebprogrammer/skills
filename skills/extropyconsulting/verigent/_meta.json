@@ -3,9 +3,15 @@
   "slug": "verigent",
   "displayName": "Verigent",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1771988472288,
-    "commit": "https://github.com/openclaw/skills/commit/ec257c6fcf478af9e1649234788f13b3ebcdd8b1"
+    "version": "0.1.2",
+    "publishedAt": 1772577629118,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1771988472288,
+      "commit": "https://github.com/openclaw/skills/commit/ec257c6fcf478af9e1649234788f13b3ebcdd8b1"
+    }
+  ]
 }

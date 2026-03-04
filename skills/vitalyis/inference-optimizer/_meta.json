@@ -3,9 +3,15 @@
   "slug": "inference-optimizer",
   "displayName": "Inference optimizer",
   "latest": {
-    "version": "0.2.1",
-    "publishedAt": 1772474316886,
-    "commit": "https://github.com/openclaw/skills/commit/dfdb58c7a081129934580e5e32fc9b9e2660a788"
+    "version": "0.2.4",
+    "publishedAt": 1772632476841,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.2.1",
+      "publishedAt": 1772474316886,
+      "commit": "https://github.com/openclaw/skills/commit/dfdb58c7a081129934580e5e32fc9b9e2660a788"
+    }
+  ]
 }

@@ -101,4 +101,4 @@ Generate a deploy script that:
 
 Run before optimization to establish baseline. Path: `scripts/openclaw-audit.sh` (in this skill).
 
-**Usage:** `/optimize` or `/audit` in chat → agent execs the audit script and returns raw output. After audit, if user approves purge, agent execs `scripts/purge-stale-sessions.sh`.
+**Usage:** `/preflight` in chat → run install checks (`scripts/preflight.sh`). `/audit` in chat → analyze only (run audit script and return output). `/optimize` in chat → run audit, then execute approved optimization actions. For purge, only run after user approval: `scripts/purge-stale-sessions.sh`.

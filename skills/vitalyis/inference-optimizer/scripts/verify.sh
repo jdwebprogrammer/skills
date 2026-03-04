@@ -31,6 +31,8 @@ check "[[ -f $SKILL_DIR/scripts/openclaw-audit.sh ]]" "openclaw-audit.sh exists"
 check "[[ -x $SKILL_DIR/scripts/openclaw-audit.sh ]]" "openclaw-audit.sh executable"
 check "[[ -f $SKILL_DIR/scripts/purge-stale-sessions.sh ]]" "purge-stale-sessions.sh exists"
 check "[[ -x $SKILL_DIR/scripts/purge-stale-sessions.sh ]]" "purge-stale-sessions.sh executable"
+check "[[ -f $SKILL_DIR/scripts/preflight.sh ]]" "preflight.sh exists"
+check "[[ -x $SKILL_DIR/scripts/preflight.sh ]]" "preflight.sh executable"
 check "[[ -f $SKILL_DIR/SKILL.md ]]" "SKILL.md exists"
 
 if [[ -f "$WORKSPACE_MAIN/AGENTS.md" ]] && grep -q "/optimize" "$WORKSPACE_MAIN/AGENTS.md" 2>/dev/null; then
@@ -42,7 +44,8 @@ else
 fi
 
 if [[ -d "$WORKSPACE_MAIN" ]]; then
-  if bash "$SKILL_DIR/scripts/openclaw-audit.sh" 2>/dev/null | grep -q "Workspace file sizes"; then
+  AUDIT_OUTPUT="$(bash "$SKILL_DIR/scripts/openclaw-audit.sh" 2>/dev/null || true)"
+  if grep -q "Workspace file sizes" <<<"$AUDIT_OUTPUT"; then
     echo "[OK] openclaw-audit.sh runs (paths resolvable)"
     ((PASS++)) || true
   else

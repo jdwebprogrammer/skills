@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.3] - 2026-03-03
+
+- Exec allowlist docs: resolved binary paths (`/usr/bin/bash` on Ubuntu), preflight patterns, and troubleshooting guidance in README and SKILL.
+- SKILL.md: ClawHub frontmatter (emoji, os, bins), commands table, Installation section, Security & Allowlist split; README install command `clawhub install inference-optimizer`.
+
+## [0.2.2] - 2026-03-03
+
+- Added `/preflight` chat flow for backup, audit, and setup preview without shell access.
+- Split command intent: `/audit` is analyze-only; `/optimize` is analyze plus approved actions.
+- Added `scripts/preflight.sh` with timestamped backups and run logs.
+- Updated setup and verify scripts to include `/preflight` wiring and checks.
+- Updated docs to reflect archive-first purge behavior and command boundaries.
+
 ## [0.2.1] - 2026-03-02
 
 Follow-up security review (see [SECURITY.md](SECURITY.md) addendum):

@@ -13,6 +13,10 @@ ARCHIVE_BASE="${OPENCLAW_ARCHIVE:-$HOME/openclaw-purge-archive}"
 
 DO_DELETE=false
 [[ "${1:-}" = "--delete" ]] && DO_DELETE=true
+SESSION_ACTION_COUNT=0
+MEMORY_ACTION_COUNT=0
+SESSION_ACTION_LABEL="archived"
+MEMORY_ACTION_LABEL="archived"
 
 if [[ ! -d "$SESSIONS" ]]; then
   echo "Sessions dir not found (run on VPS): $SESSIONS"
@@ -20,11 +24,14 @@ if [[ ! -d "$SESSIONS" ]]; then
 fi
 
 if [[ "$DO_DELETE" = true ]]; then
+  SESSION_ACTION_LABEL="deleted"
+  MEMORY_ACTION_LABEL="deleted"
   echo "=== Delete stale sessions (>24h) [no archive] ==="
   BEFORE=$(find "$SESSIONS" -name "*.jsonl" 2>/dev/null | wc -l)
   find "$SESSIONS" -type f -name "*.jsonl" -mtime +1 -delete 2>/dev/null || true
   AFTER=$(find "$SESSIONS" -name "*.jsonl" 2>/dev/null | wc -l)
-  echo "  Sessions: $BEFORE -> $AFTER (removed $((BEFORE - AFTER)))"
+  SESSION_ACTION_COUNT=$((BEFORE - AFTER))
+  echo "  Sessions: $BEFORE -> $AFTER (${SESSION_ACTION_LABEL} $SESSION_ACTION_COUNT)"
 else
   ARCHIVE_DIR="$ARCHIVE_BASE/$(date +%Y-%m-%d-%H%M%S)"
   mkdir -p "$ARCHIVE_DIR/sessions" "$ARCHIVE_DIR/memory"
@@ -35,7 +42,8 @@ else
     mv "$f" "$ARCHIVE_DIR/sessions/" 2>/dev/null && ((MOVED++)) || true
   done < <(find "$SESSIONS" -type f -name "*.jsonl" -mtime +1 -print0 2>/dev/null)
   AFTER=$(find "$SESSIONS" -name "*.jsonl" 2>/dev/null | wc -l)
-  echo "  Sessions: $BEFORE -> $AFTER (archived $MOVED to $ARCHIVE_DIR/sessions/)"
+  SESSION_ACTION_COUNT=$MOVED
+  echo "  Sessions: $BEFORE -> $AFTER (${SESSION_ACTION_LABEL} $SESSION_ACTION_COUNT to $ARCHIVE_DIR/sessions/)"
 fi
 
 echo ""
@@ -48,7 +56,7 @@ if [[ -d "$MEMORY_DIR" ]]; then
     if [[ $(wc -c < "$f") -lt 200 ]]; then
       if [[ "$DO_DELETE" = true ]]; then
         rm -f "$f" && ((PURGED++)) || true
-        echo "  removed $(basename "$f")"
+        echo "  deleted $(basename "$f")"
       else
         mkdir -p "$ARCHIVE_DIR/memory"
         mv "$f" "$ARCHIVE_DIR/memory/" 2>/dev/null && ((PURGED++)) || true
@@ -60,6 +68,7 @@ if [[ -d "$MEMORY_DIR" ]]; then
 else
   echo "  memory dir not found: $MEMORY_DIR"
 fi
+MEMORY_ACTION_COUNT=$PURGED
 
 if [[ "$DO_DELETE" != true ]]; then
   echo ""
@@ -70,3 +79,13 @@ echo ""
 echo "=== Verify ==="
 echo "  Sessions: $(find "$SESSIONS" -name "*.jsonl" 2>/dev/null | wc -l)"
 echo "  Memory files: $(find "$MEMORY_DIR" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l)"
+echo ""
+echo "=== Summary ==="
+if [[ "$DO_DELETE" = true ]]; then
+  echo "  Mode: delete (no archive)"
+else
+  echo "  Mode: archive-first"
+  echo "  Archive directory: ${ARCHIVE_DIR:-$ARCHIVE_BASE/...}"
+fi
+echo "  Sessions stale $SESSION_ACTION_LABEL: $SESSION_ACTION_COUNT"
+echo "  Memory stub files $MEMORY_ACTION_LABEL: $MEMORY_ACTION_COUNT"

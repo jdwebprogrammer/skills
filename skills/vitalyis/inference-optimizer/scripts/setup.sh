@@ -12,6 +12,8 @@ WORKSPACE_WHATSAPP="${WORKSPACE_WHATSAPP:-$HOME/.openclaw/workspace-whatsapp}"
 
 chmod +x "$SKILL_DIR/scripts/openclaw-audit.sh"
 chmod +x "$SKILL_DIR/scripts/purge-stale-sessions.sh"
+chmod +x "$SKILL_DIR/scripts/preflight.sh"
+chmod +x "$SKILL_DIR/scripts/verify.sh"
 echo "[OK] Scripts executable"
 
 APPLY=false
@@ -19,21 +21,26 @@ APPLY=false
 
 AUDIT_PATH="$SKILL_DIR/scripts/openclaw-audit.sh"
 PURGE_PATH="$SKILL_DIR/scripts/purge-stale-sessions.sh"
+PREFLIGHT_PATH="$SKILL_DIR/scripts/preflight.sh"
 
 SNIPPET_AGENTS="
 
 ## Chat commands (exact match, run immediately)
 
 | Command | Action |
-| \`/optimize\` or \`/audit\` | Exec \`bash $AUDIT_PATH\`; include script output. |"
+| \`/preflight\` | Exec \`bash $PREFLIGHT_PATH\`; creates backup archives, runs audit, runs setup preview, returns logs/next steps. |
+| \`/audit\` | Exec \`bash $AUDIT_PATH\`; include script output only. Do not run file-changing actions. |
+| \`/optimize\` | Exec \`bash $AUDIT_PATH\`; include script output, then propose optimization actions. Require explicit approval before purge/rewrite/deploy. |"
 
 SNIPPET_TOOLS="
 
 ## inference-optimizer
 
 | App | Use | Example |
-| \`/optimize\` | Run audit script | exec \`bash $AUDIT_PATH\`; include output. |
-| purge sessions | After /optimize if user approves | exec \`bash $PURGE_PATH\` (archives by default). |"
+| \`/preflight\` | Install checks and backup flow | exec \`bash $PREFLIGHT_PATH\`; optional apply: \`bash $PREFLIGHT_PATH --apply-setup\` after approval. |
+| \`/audit\` | Analyze only | exec \`bash $AUDIT_PATH\`; include output only. |
+| \`/optimize\` | Analyze + action flow | exec \`bash $AUDIT_PATH\`; then propose actions; run actions only after approval. |
+| purge sessions | Approved action after audit/optimize | exec \`bash $PURGE_PATH\` (archives by default). |"
 
 if [[ "$APPLY" = false ]]; then
   echo ""
@@ -53,21 +60,21 @@ fi
 for ws in "$WORKSPACE_MAIN" "$WORKSPACE_WHATSAPP"; do
   [[ -d "$ws" ]] || continue
   if [[ -f "$ws/AGENTS.md" ]]; then
-    if ! grep -q "/optimize" "$ws/AGENTS.md" 2>/dev/null; then
+    if ! grep -q "/preflight" "$ws/AGENTS.md" 2>/dev/null; then
       echo "$SNIPPET_AGENTS" >> "$ws/AGENTS.md"
-      echo "[OK] Added /optimize to $ws/AGENTS.md"
+      echo "[OK] Added inference-optimizer commands to $ws/AGENTS.md"
     else
-      echo "[SKIP] $ws/AGENTS.md already has /optimize"
+      echo "[SKIP] $ws/AGENTS.md already has /preflight"
     fi
   else
     echo "[WARN] $ws/AGENTS.md not found"
   fi
   if [[ -f "$ws/TOOLS.md" ]]; then
-    if ! grep -q "inference-optimizer" "$ws/TOOLS.md" 2>/dev/null; then
+    if ! grep -q "/preflight" "$ws/TOOLS.md" 2>/dev/null; then
       echo "$SNIPPET_TOOLS" >> "$ws/TOOLS.md"
-      echo "[OK] Added /optimize to $ws/TOOLS.md"
+      echo "[OK] Added inference-optimizer commands to $ws/TOOLS.md"
     else
-      echo "[SKIP] $ws/TOOLS.md already has inference-optimizer"
+      echo "[SKIP] $ws/TOOLS.md already has /preflight"
     fi
   else
     echo "[WARN] $ws/TOOLS.md not found"

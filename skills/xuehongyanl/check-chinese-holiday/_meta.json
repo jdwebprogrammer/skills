@@ -3,9 +3,15 @@
   "slug": "check-chinese-holiday",
   "displayName": "中国节假日检测",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772612389728,
-    "commit": "https://github.com/openclaw/skills/commit/1f03a04e41afb39403011ea40fb0ee276a83f508"
+    "version": "1.1.0",
+    "publishedAt": 1772612897678,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772612389728,
+      "commit": "https://github.com/openclaw/skills/commit/1f03a04e41afb39403011ea40fb0ee276a83f508"
+    }
+  ]
 }

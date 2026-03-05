@@ -1,0 +1,11 @@
+{
+  "owner": "anmolnagpal",
+  "slug": "nsg-firewall-auditor",
+  "displayName": "Nsg Firewall Auditor",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772622273722,
+    "commit": null
+  },
+  "history": []
+}

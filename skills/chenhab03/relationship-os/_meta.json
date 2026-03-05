@@ -1,0 +1,11 @@
+{
+  "owner": "chenhab03",
+  "slug": "relationship-os",
+  "displayName": "Relationship OS",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772625112300,
+    "commit": null
+  },
+  "history": []
+}

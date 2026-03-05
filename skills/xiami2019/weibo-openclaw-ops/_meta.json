@@ -3,9 +3,15 @@
   "slug": "weibo-openclaw-ops",
   "displayName": "Weibo OpenClaw Ops",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772727031403,
-    "commit": "https://github.com/openclaw/skills/commit/f2afee3b261867f2ed3215c5d7f36392a9f5290f"
+    "version": "1.2.0",
+    "publishedAt": 1772728611782,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772727031403,
+      "commit": "https://github.com/openclaw/skills/commit/f2afee3b261867f2ed3215c5d7f36392a9f5290f"
+    }
+  ]
 }

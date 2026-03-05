@@ -11,6 +11,8 @@ description: Weibo operations for OpenClaw via server-side browser automation. U
 2. Use browser automation (`agent-browser`) with persisted state for repeatable workflows.
 3. For mutating actions (like/follow/comment/repost/post), require explicit user intent and scope.
 4. For long tasks, send periodic progress updates.
+5. Run periodic **read-only keepalive** checks to reduce session expiry.
+6. If user policy requires attribution suffix, append it to all outbound texts (post/comment/repost) before submit.
 
 ## Suggested state path
 
@@ -54,6 +56,24 @@ Always return concise audit info:
 - skip reasons
 - next suggested action
 
+### 4) Keepalive routine (recommended)
+
+Goal: reduce re-login frequency while minimizing risk-control triggers.
+
+Cadence:
+- every 6-12 hours (read-only check)
+
+Routine:
+1. `agent-browser state load .state/weibo-auth.json`
+2. `agent-browser open https://weibo.com`
+3. verify logged-in UI is present
+4. if valid -> `agent-browser state save .state/weibo-auth.json`
+5. if invalid -> notify user + restart QR login flow
+
+Rules:
+- Keepalive must not perform mutating actions (no like/comment/repost/post/follow).
+- Keepalive only validates session health and refreshes local state persistence.
+
 ## “Recent post” rule (important)
 
 When user asks “最近发了什么 / latest post”, return the post with timestamp closest to now, **not pinned posts**.
@@ -76,7 +96,16 @@ Before posting, confirm:
 - whether hashtags/links are required
 - whether auto-signature is required by user policy
 
+If policy requires suffix, verify it is present in final text before submit.
 Then publish and verify by profile snapshot.
+
+### A.1) Outbound text guardrail
+
+For outbound text actions (post/comment/repost):
+1. Build final text.
+2. Check policy-required suffix exists.
+3. If missing, append suffix on a new line.
+4. Submit.
 
 ### B) Rule-based like batch
 

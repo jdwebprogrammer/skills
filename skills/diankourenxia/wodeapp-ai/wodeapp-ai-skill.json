@@ -1,0 +1,318 @@
+{
+    "name": "wodeapp-ai",
+    "version": "1.0.0",
+    "displayName": "WodeApp AI 全能引擎",
+    "description": "AI 文本生成、图片生成、JSON 结构化输出、语音合成、视频生成、页面构建 — 一个 skill 包搞定所有 AI 能力",
+    "author": "WodeApp Team",
+    "license": "MIT",
+    "homepage": "https://wodeapp.ai",
+    "source": "https://wodeapp.ai/api-skills",
+    "always": false,
+    "requiredEnvVars": [
+        {
+            "name": "WODEAPP_API_KEY",
+            "description": "API Key from wodeapp.ai — required for all API and MCP requests",
+            "required": true
+        }
+    ],
+    "security": {
+        "authMethod": "API Key (header: X-API-Key)",
+        "keyStorage": "Environment variable WODEAPP_API_KEY. Do NOT hardcode in source files.",
+        "scoping": "Keys can be scoped with billing limits per project",
+        "revocation": "Keys can be revoked instantly at wodeapp.ai/api-skills",
+        "dataPolicy": "User prompts are sent to upstream AI providers for processing only. No data is stored for model training."
+    },
+    "connection": {
+        "mcp": {
+            "type": "sse",
+            "url": "https://wodeapp.ai/mainserver/mcp",
+            "localUrl": "http://localhost:3100/mainserver/mcp",
+            "messageEndpoint": "/mainserver/mcp/message?sessionId={sessionId}",
+            "toolsEndpoint": "/mainserver/mcp/tools",
+            "auth": {
+                "type": "header",
+                "key": "X-API-Key",
+                "valueEnv": "WODEAPP_API_KEY"
+            }
+        },
+        "rest": {
+            "mainServer": "https://wodeapp.ai/mainserver/api",
+            "runtimeServer": "https://wodeapp.ai/api",
+            "localMainServer": "http://localhost:3100/mainserver/api",
+            "localRuntimeServer": "http://localhost:4100/api"
+        }
+    },
+    "tools": [
+        {
+            "name": "ai_generate_text",
+            "description": "AI 文本生成 — 支持 GPT-4o/Claude/Gemini/DeepSeek 等 343+ 模型",
+            "endpoint": "POST /ai/chat",
+            "server": "runtime",
+            "inputSchema": {
+                "message": {
+                    "type": "string",
+                    "required": true,
+                    "description": "用户消息/提示词"
+                },
+                "systemPrompt": {
+                    "type": "string",
+                    "description": "系统提示 (角色设定)"
+                },
+                "model": {
+                    "type": "string",
+                    "description": "模型 ID (默认 gemini-2.0-flash)"
+                },
+                "temperature": {
+                    "type": "number",
+                    "description": "创造性 0-1 (默认 0.7)"
+                },
+                "maxTokens": {
+                    "type": "number",
+                    "description": "最大输出 token"
+                }
+            },
+            "outputSchema": {
+                "success": "boolean",
+                "data.content": "string"
+            }
+        },
+        {
+            "name": "ai_generate_json",
+            "description": "AI 结构化 JSON 输出 — 生成符合指定 schema 的 JSON 对象",
+            "endpoint": "POST /ai/json",
+            "server": "runtime",
+            "inputSchema": {
+                "message": {
+                    "type": "string",
+                    "required": true,
+                    "description": "需求描述"
+                },
+                "systemPrompt": {
+                    "type": "string",
+                    "description": "指定输出 JSON schema 格式"
+                }
+            },
+            "outputSchema": {
+                "success": "boolean",
+                "data.content": "object"
+            }
+        },
+        {
+            "name": "ai_generate_image",
+            "description": "AI 文生图/图生图 — 支持 Seedream 3.0 / Imagen 4 等多引擎",
+            "endpoint": "POST /ai/image/generate",
+            "server": "runtime",
+            "inputSchema": {
+                "prompt": {
+                    "type": "string",
+                    "required": true,
+                    "description": "图片描述"
+                },
+                "imageUrl": {
+                    "type": "string",
+                    "description": "参考图 URL (图生图模式)"
+                },
+                "size": {
+                    "type": "string",
+                    "enum": [
+                        "1:1",
+                        "3:4",
+                        "4:3",
+                        "9:16",
+                        "16:9"
+                    ],
+                    "description": "画幅比例"
+                },
+                "model": {
+                    "type": "string",
+                    "description": "图片模型 ID"
+                }
+            },
+            "outputSchema": {
+                "success": "boolean",
+                "data.url": "string"
+            }
+        },
+        {
+            "name": "ai_text_to_speech",
+            "description": "AI 语音合成 (TTS) — 文字转语音",
+            "endpoint": "POST /ai/tts",
+            "server": "runtime",
+            "inputSchema": {
+                "text": {
+                    "type": "string",
+                    "required": true,
+                    "description": "待合成文本"
+                },
+                "voice": {
+                    "type": "string",
+                    "description": "语音角色"
+                },
+                "language": {
+                    "type": "string",
+                    "description": "语言代码 (zh-CN/en-US)"
+                }
+            },
+            "outputSchema": {
+                "success": "boolean",
+                "data.url": "string"
+            }
+        },
+        {
+            "name": "ai_list_models",
+            "description": "列出所有可用 AI 模型（文本/图片/视频）",
+            "endpoint": "GET /ai/models",
+            "server": "runtime",
+            "inputSchema": {},
+            "outputSchema": {
+                "registry": {
+                    "text": "Model[]",
+                    "image": "Model[]",
+                    "video": "Model[]"
+                }
+            }
+        },
+        {
+            "name": "upload_image",
+            "description": "上传图片 — 支持 base64 或 URL 方式",
+            "endpoint": "POST /upload/image",
+            "server": "runtime",
+            "inputSchema": {
+                "data": {
+                    "type": "string",
+                    "description": "base64 图片 (data:image/...;base64,...)"
+                },
+                "url": {
+                    "type": "string",
+                    "description": "图片 URL (二选一)"
+                }
+            },
+            "outputSchema": {
+                "success": "boolean",
+                "url": "string"
+            }
+        },
+        {
+            "name": "create_project",
+            "description": "创建 WodeApp 项目 — 可选模板初始化",
+            "endpoint": "POST /json-schema/projects",
+            "server": "main",
+            "inputSchema": {
+                "name": {
+                    "type": "string",
+                    "required": true,
+                    "description": "项目名称 (用作域名)"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "项目描述"
+                },
+                "templateId": {
+                    "type": "string",
+                    "description": "模板 ID (如 digital-human-generator)"
+                },
+                "language": {
+                    "type": "string",
+                    "enum": [
+                        "zh-CN",
+                        "en-US"
+                    ],
+                    "description": "内容语言"
+                }
+            },
+            "outputSchema": {
+                "success": "boolean",
+                "data": {
+                    "id": "string",
+                    "slug": "string",
+                    "pages": "Page[]"
+                }
+            }
+        },
+        {
+            "name": "ai_generate_page",
+            "description": "AI 生成完整页面 (SSE 流式) — 输入需求描述，自动生成页面内容和布局",
+            "endpoint": "POST /json-schema/generate-stream",
+            "server": "main",
+            "streaming": true,
+            "inputSchema": {
+                "pageId": {
+                    "type": "string",
+                    "required": true,
+                    "description": "目标页面 ID"
+                },
+                "requirements": {
+                    "type": "string",
+                    "required": true,
+                    "description": "页面需求描述"
+                },
+                "projectContext": {
+                    "type": "object",
+                    "properties": {
+                        "projectId": {
+                            "type": "string",
+                            "required": true
+                        }
+                    }
+                }
+            },
+            "outputSchema": {
+                "type": "SSE",
+                "events": [
+                    "progress",
+                    "section_start",
+                    "section_complete",
+                    "done",
+                    "error"
+                ]
+            }
+        },
+        {
+            "name": "publish_project",
+            "description": "发布项目上线 — 生成可访问的域名链接",
+            "endpoint": "POST /json-schema/publish/{projectId}",
+            "server": "main",
+            "inputSchema": {
+                "projectId": {
+                    "type": "string",
+                    "required": true,
+                    "description": "项目 ID (路径参数)"
+                }
+            },
+            "outputSchema": {
+                "success": "boolean",
+                "data": {
+                    "url": "string",
+                    "version": "number"
+                }
+            }
+        }
+    ],
+    "mcpTools": [
+        "list_projects",
+        "get_project",
+        "create_project",
+        "get_page",
+        "list_actions",
+        "execute_action",
+        "ai_generate_text",
+        "ai_generate_image",
+        "publish_project"
+    ],
+    "templates": [
+        "digital-human-generator",
+        "ai-customer-service",
+        "marketing-landing",
+        "data-dashboard",
+        "blog-writer",
+        "survey-form",
+        "workflow-automation"
+    ],
+    "rateLimits": {
+        "perUser": 5,
+        "global": 30,
+        "guestDaily": 500,
+        "projectDaily": 2000,
+        "unit": "credits"
+    }
+}

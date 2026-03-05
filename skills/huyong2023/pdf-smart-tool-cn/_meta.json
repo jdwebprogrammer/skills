@@ -3,9 +3,15 @@
   "slug": "pdf-smart-tool-cn",
   "displayName": "Pdf Smart Tool Cn",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772436534255,
-    "commit": "https://github.com/openclaw/skills/commit/bd77824dd22a2c9622a66ddfec4e6ea62f207ebb"
+    "version": "1.1.0",
+    "publishedAt": 1772699294434,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772436534255,
+      "commit": "https://github.com/openclaw/skills/commit/bd77824dd22a2c9622a66ddfec4e6ea62f207ebb"
+    }
+  ]
 }

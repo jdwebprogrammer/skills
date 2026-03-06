@@ -15,6 +15,7 @@ description: |
   Includes helper script (pve.sh) with auto node discovery from VMID, operational safety gates (read-only vs reversible vs destructive), vmstate snapshot warnings, post-resize guest filesystem steps, and a separate provisioning reference.
 
   Requires: curl, jq.
+  Credentials: PROXMOX_HOST, PROXMOX_TOKEN_ID, PROXMOX_TOKEN_SECRET — set as env vars or stored in ~/.proxmox-credentials (sourced at runtime, user-created, mode 600).
   Writes: ~/.proxmox-credentials (user-created, API token, mode 600).
   Network: connects to user-configured Proxmox host only (HTTPS, TLS verification disabled for self-signed certs).
 

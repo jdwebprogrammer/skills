@@ -10,6 +10,6 @@ if (help || !named.order || !named.rating) {
 const body = { rating: Number.parseInt(named.rating, 10) };
 if (named.comment) body.comment = named.comment;
 
-const data = await tmrFetch("POST", `/orders/${named.order}/review`, body);
+const data = await tmrFetch("POST", `/reviews/order/${named.order}`, body);
 console.log(`Review submitted for order ${named.order} (rating: ${body.rating})`);
 console.log(JSON.stringify(data, null, 2));

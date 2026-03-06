@@ -17,7 +17,7 @@ Create a new API key. The `raw_key` field is returned only once at creation time
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `name` | str | Yes | Human-readable key name, max 100 characters |
-| `role` | str | No | Role scope for the key, default `"business"`. Accepted: `"business"`, `"business"`, `"both"` |
+| `role` | str | No | Role scope for the key, default `"personal"`. Accepted: `"personal"`, `"business"` |
 | `permissions` | list[str] \| None | No | Optional list of fine-grained permission scopes |
 
 ### Request Example

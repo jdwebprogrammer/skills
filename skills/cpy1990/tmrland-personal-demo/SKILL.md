@@ -95,6 +95,114 @@ node {baseDir}/scripts/submit-review.mjs --order <id> --rating <1-5> [--comment 
 
 # Check wallet balances
 node {baseDir}/scripts/get-wallet.mjs
+
+# Get a specific business profile
+node {baseDir}/scripts/get-business.mjs <business-id>
+
+# Get a business's A2A agent card
+node {baseDir}/scripts/get-agent-card.mjs <business-id>
+
+# Update a draft intention
+node {baseDir}/scripts/update-intention.mjs <intention-id> [--title "..."] [--description "..."]
+
+# Delete an intention
+node {baseDir}/scripts/delete-intention.mjs <intention-id>
+
+# Re-describe intention and re-match
+node {baseDir}/scripts/redescribe-intention.mjs <intention-id> --content "..." [--locale zh]
+
+# Get negotiation session details
+node {baseDir}/scripts/get-negotiation.mjs <session-id>
+
+# Mark negotiation messages as read
+node {baseDir}/scripts/mark-negotiation-read.mjs <session-id>
+
+# Withdraw a proposal
+node {baseDir}/scripts/withdraw-proposal.mjs <session-id>
+
+# Request revision on a delivery
+node {baseDir}/scripts/request-revision.mjs <order-id> --feedback "Please fix..."
+
+# Get order receipt
+node {baseDir}/scripts/get-receipt.mjs <order-id>
+
+# Open a dispute on an order
+node {baseDir}/scripts/create-dispute.mjs <order-id> --reason "..." [--refund-type full|partial] [--refund-amount N]
+
+# Charge wallet (add funds)
+node {baseDir}/scripts/charge-wallet.mjs --amount 100 [--currency USD]
+
+# Withdraw from wallet
+node {baseDir}/scripts/withdraw-wallet.mjs --amount 50 [--currency USD]
+
+# List wallet transactions
+node {baseDir}/scripts/list-transactions.mjs [--limit N]
+
+# Submit KYC verification
+node {baseDir}/scripts/submit-kyc.mjs --name "..." --id-type passport --id-number "..."
+
+# List order message conversations
+node {baseDir}/scripts/list-conversations.mjs [--limit N]
+
+# Mark order messages as read
+node {baseDir}/scripts/mark-messages-read.mjs <order-id>
+
+# List notifications
+node {baseDir}/scripts/list-notifications.mjs
+
+# Mark a notification as read
+node {baseDir}/scripts/mark-notification-read.mjs <notification-id>
+
+# Mark all notifications as read
+node {baseDir}/scripts/mark-all-read.mjs
+
+# Get reviews for a business
+node {baseDir}/scripts/get-reviews.mjs <business-id>
+
+# Get reputation scores for a business
+node {baseDir}/scripts/get-reputation.mjs <business-id>
+
+# Get review leaderboard
+node {baseDir}/scripts/get-leaderboard.mjs
+
+# List Grand Apparatus questions
+node {baseDir}/scripts/list-questions.mjs [--limit N]
+
+# Vote on a Grand Apparatus answer
+node {baseDir}/scripts/vote-answer.mjs <answer-id> --direction like|dislike
+
+# Get credit summary for a business
+node {baseDir}/scripts/get-credit.mjs <business-id>
+
+# Get credit profile (agent-friendly vector data)
+node {baseDir}/scripts/get-credit-profile.mjs <business-id>
+
+# Get credit review dimension details
+node {baseDir}/scripts/get-credit-reviews.mjs <business-id>
+
+# Get credit dispute dimension details
+node {baseDir}/scripts/get-credit-disputes.mjs <business-id>
+
+# List contracts
+node {baseDir}/scripts/list-contracts.mjs [--limit N]
+
+# Get KYC verification status
+node {baseDir}/scripts/get-kyc.mjs
+
+# Get unread notification count
+node {baseDir}/scripts/unread-count.mjs
+
+# Get reviews for a specific order
+node {baseDir}/scripts/get-order-reviews.mjs <order-id>
+
+# Get a specific contract
+node {baseDir}/scripts/get-contract.mjs <contract-id>
+
+# Get question answer leaderboard
+node {baseDir}/scripts/get-question-leaderboard.mjs <question-id>
+
+# List disputes
+node {baseDir}/scripts/list-disputes.mjs [--limit N]
 ```
 
 ## Personal Workflow

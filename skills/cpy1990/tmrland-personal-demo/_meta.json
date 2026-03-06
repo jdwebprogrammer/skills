@@ -3,11 +3,16 @@
   "slug": "tmrland-personal-demo",
   "displayName": "tmrland-personal-demo",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1772551814219,
-    "commit": "https://github.com/openclaw/skills/commit/35ab91fb934f57ae31f7783d37efb07c73da97a9"
+    "version": "1.0.5",
+    "publishedAt": 1772716585375,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1772551814219,
+      "commit": "https://github.com/openclaw/skills/commit/35ab91fb934f57ae31f7783d37efb07c73da97a9"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1772281089934,

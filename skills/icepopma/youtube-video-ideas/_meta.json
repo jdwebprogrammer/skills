@@ -1,11 +1,17 @@
 {
   "owner": "icepopma",
   "slug": "youtube-video-ideas",
-  "displayName": "YouTube Video Ideas",
+  "displayName": "Youtube Video Ideas",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1772671996956,
-    "commit": "https://github.com/openclaw/skills/commit/12b0e582adb2f47b602f0b8d77ae2364d3fd5207"
+    "version": "1.1.2",
+    "publishedAt": 1772728449565,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1772671996956,
+      "commit": "https://github.com/openclaw/skills/commit/12b0e582adb2f47b602f0b8d77ae2364d3fd5207"
+    }
+  ]
 }

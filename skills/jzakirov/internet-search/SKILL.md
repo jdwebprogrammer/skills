@@ -1,6 +1,13 @@
 ---
 name: internet-search
 description: "How to use the internet_search tool effectively — category routing, query formulation, and multi-search strategies. Use whenever web search is needed: current events, research papers, community opinions, or any information beyond training knowledge."
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "🔍"
+      }
+  }
 ---
 
 # Internet Search
@@ -33,6 +40,16 @@ Write queries as a search engine expects — keywords, not full sentences:
 - **news**: include a time anchor — `"OpenAI o3 release 2025"` not just `"OpenAI o3"`
 - **academic**: use field terminology — `"transformer attention efficiency survey"`
 - **social**: phrase as community search — `"reddit best mechanical keyboard 2025"`
+
+## SearXNG Search Syntax (in `query`)
+
+SearXNG supports lightweight query modifiers you can embed directly into the `query` string:
+
+| Syntax | Meaning | Examples |
+|--------|---------|----------|
+| `!<engine>` / `!<category>` | Select engine(s) and/or a category. Chainable and inclusive; abbreviations are accepted. | `!wp paris`, `!wikipedia paris`, `!map paris`, `!map !ddg !wp paris` |
+| `:<lang>` | Language filter | `:fr !wp Wau Holland` |
+
 
 ## Count
 

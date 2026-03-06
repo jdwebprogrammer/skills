@@ -1,246 +1,163 @@
 ---
-name: free-mission-control
-description: Set up JARVIS Mission Control — a free, open-source coordination hub where AI agents and humans work as a real team. Persistent tasks, subtasks, comments, activity feeds, agent status, and a live dashboard. Self-host from the open-source repo, or connect to MissionDeck.ai for instant cloud access.
-homepage: https://missiondeck.ai
+name: jarvis-mission-control
+description: "Set up JARVIS Mission Control v2.0.4 — a free, open-source AI agent coordination hub. Kanban board, real-time WebSocket updates, team chat, scheduled job visibility, agent SOUL editor, Claude Code session tracking, GitHub Issues sync, SQLite-backed webhook delivery with circuit breaker, CSRF + rate limiting. Fork the repo, start the server, open the dashboard. No cloud account required. Use when you need a persistent multi-agent task management system, want to coordinate humans and AI agents on shared work, or need a self-hosted dashboard to track agent activity."
 metadata:
   {
     "openclaw":
       {
-        "emoji": "🎯",
-        "requires": { "bins": ["node", "git"] },
-        "install":
+        "requires": { "bins": ["node", "npm", "git"] },
+        "network": "optional",
+        "env":
           [
-            {
-              "id": "demo",
-              "kind": "link",
-              "label": "👁️ Live Demo (no account needed)",
-              "url": "https://missiondeck.ai/mission-control/demo",
-            },
-            {
-              "id": "github",
-              "kind": "link",
-              "label": "GitHub (self-hosted)",
-              "url": "https://github.com/Asif2BD/JARVIS-Mission-Control-OpenClaw",
-            },
-            {
-              "id": "cloud",
-              "kind": "link",
-              "label": "MissionDeck.ai Cloud",
-              "url": "https://missiondeck.ai",
-            },
-          ],
-      },
+            { "name": "PORT", "description": "Server port (default: 3000)" },
+            { "name": "MISSION_CONTROL_DIR", "description": "Path to .mission-control data directory (default: repo root)" },
+            { "name": "OPENCLAW_CRON_FILE", "description": "Path to OpenClaw cron jobs JSON (default: ~/.openclaw/cron/jobs.json — auto-detected)" }
+          ]
+      }
   }
 ---
 
-# Free Mission Control for OpenClaw AI Agents
+# JARVIS Mission Control
 
-Built by [MissionDeck.ai](https://missiondeck.ai) · [GitHub](https://github.com/Asif2BD/JARVIS-Mission-Control-OpenClaw) · [Live Demo](https://missiondeck.ai/mission-control/demo)
+**v2.0.4** — Free, open-source multi-agent coordination hub for OpenClaw.
 
-> **Security notice:** This is an instruction-only skill. All setup commands reference open-source code at the GitHub link above. Review `server/index.js`, `package.json`, and `scripts/` in your fork before running anything. No commands in this skill execute automatically — they are reference instructions for the human operator to run manually.
+Fork the repo → start the server → your team of AI agents and humans has a shared Kanban board, real-time chat, and full task history in minutes.
 
----
+**GitHub:** [Asif2BD/JARVIS-Mission-Control-OpenClaw](https://github.com/Asif2BD/JARVIS-Mission-Control-OpenClaw)
 
-## Install This Skill
-
-```bash
-clawhub install jarvis-mission-control
-```
-
-## More Skills by Asif2BD
-
-```bash
-# See all available skills
-clawhub search Asif2BD
-
-# Token cost optimizer for OpenClaw
-clawhub install openclaw-token-optimizer
-```
+**Live Demo:** [missiondeck.ai/mission-control/demo](https://missiondeck.ai/mission-control/demo) _(no account required)_
 
 ---
 
-## 🎯 Pick Your Setup Mode
-
-> Three ways to run Mission Control. Pick the one that fits your situation.
-
-| Mode | What You Need | Dashboard URL | Setup Time |
-|------|--------------|--------------|------------|
-| **👁️ Demo** | Nothing | [`missiondeck.ai/mission-control/demo`](https://missiondeck.ai/mission-control/demo) | 0 minutes |
-| **☁️ Cloud (MissionDeck)** | Free API key *(sync coming soon)* | `https://missiondeck.ai/mission-control/your-slug` | 5 min (when live) |
-| **🖥️ Self-Hosted (local)** | Node.js ≥18 + Git | `http://localhost:3000` | 10 minutes |
-
----
-
-## ☁️ Option A — Cloud Setup (Coming Soon)
-
-> ⚠️ **Cloud sync is not yet deployed.** The setup steps below will save your config, but remote dashboard access is not available until the MissionDeck sync API goes live. Your local setup (`http://localhost:3000`) works perfectly now.
-
-**What you need:**
-- A free account at [missiondeck.ai/settings/api-keys](https://missiondeck.ai/settings/api-keys) — no credit card required
-- An API key from your workspace settings
-
-**Steps:**
-1. Fork the repo: `https://github.com/Asif2BD/JARVIS-Mission-Control-OpenClaw`
-2. Review `server/index.js` and `scripts/connect-missiondeck.sh` in your fork
-3. Clone your fork and run the connection script:
+## Quick Start
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/JARVIS-Mission-Control-OpenClaw
+# 1. Fork + clone
+git clone https://github.com/YOUR-USERNAME/JARVIS-Mission-Control-OpenClaw.git
 cd JARVIS-Mission-Control-OpenClaw
-./scripts/connect-missiondeck.sh --api-key YOUR_KEY
+
+# 2. Initialize
+./scripts/init-mission-control.sh
+
+# 3. Start the server
+cd server && npm install && npm start
+
+# 4. Open the dashboard
+open http://localhost:3000
 ```
 
-4. Your dashboard is live at:
-```
-https://missiondeck.ai/mission-control/your-workspace-slug
-```
-
-→ Full cloud walkthrough: `references/2-missiondeck-connect.md`
+The server auto-discovers all running OpenClaw agents at startup. No manual registration needed — agents appear in the dashboard within 30 seconds.
 
 ---
 
-## 🖥️ Option B — Self-Hosted (Local)
+## What You Get
 
-Full control. Runs on your own machine or server. No internet required after setup.
+### Kanban Board
+5-column workflow visible at full screen width:
+```
+INBOX → ASSIGNED → IN PROGRESS → REVIEW → DONE  +  BLOCKED (any stage)
+```
+- Drag-and-drop task cards
+- Priority color coding (left border by priority)
+- Agent avatar chips showing assignee
+- Label chips with overflow count
+- Real-time WebSocket sync — all connected clients update instantly
 
-**What you need:** Node.js ≥18, Git
+### Smart Panels (v2.0.3)
+Three on-demand panels accessible from header buttons:
 
-**Steps:**
-1. Fork and clone:
+| Button | What it shows |
+|--------|--------------|
+| 💬 CHAT | Real-time team chat — WebSocket delivery, message bubbles with agent emoji avatars, unread badge |
+| 📋 REPORTS | Files saved by agents in `.mission-control/reports/` with tabs for Reports / Logs / Archive |
+| ⏰ SCHEDULES | All OpenClaw cron jobs across all agents — schedule interval, enabled/disabled, last run |
+
+### Agent Intelligence
+- **Claude Code Sessions** — auto-discovers `~/.claude/projects/` JSONL sessions every 60s; shows tokens, cost, model, git branch
+- **CLI Console** — run whitelisted OpenClaw commands directly from the browser
+- **GitHub Issues Sync** — auto-creates task cards from open issues (idempotent by issue number)
+- **Agent SOUL Editor** — read and write SOUL.md, MEMORY.md, IDENTITY.md directly from the dashboard
+- **Agent Profiles** — slide-out panel per agent with skills, role, activity timeline, message history
+
+### Reliability
+- **SQLite webhook delivery** (`better-sqlite3`, WAL mode) — persists across restarts
+  - Exponential backoff: 0s → 1s → 2s → 4s → 8s (max 5 attempts)
+  - Circuit breaker: ≥3 failures from last 5 → opens circuit; auto-resets after 60s
+  - Manual retry + circuit reset from dashboard
+- **Pino structured logging** — JSON in prod, pretty-print in dev
+- **51 Jest tests** — run `npm test`
+- **Update banner** — notified in dashboard when a new version is available
+
+### Security (Production-Hardened)
+- CSRF protection — token middleware + HttpOnly cookie
+- Rate limiting — 100 req/min general, 10 req/min on credential routes
+- DOMPurify + `sanitizeInput()` + `sanitizeId()` — all surfaces
+- SSRF protection via `validateWebhookUrl()` — blocks private IPs, localhost, cloud metadata
+- **Current posture: 0 CRITICAL · 0 HIGH**
+
+---
+
+## `mc` CLI
+
+Agents manage tasks from the terminal:
+
 ```bash
-git clone https://github.com/YOUR-USERNAME/JARVIS-Mission-Control-OpenClaw
-cd JARVIS-Mission-Control-OpenClaw
+mc check                             # My pending tasks
+mc tasks --status IN_PROGRESS        # Filter by status
+mc task:status task-123 DONE         # Update status
+mc task:comment task-123 "Done ✓"   # Add comment
+mc task:create --title "Fix auth"    # Create task
+mc deliver task-123 "Report" --path ./report.md
+mc subtask:add task-123 "Write tests"
+mc squad                             # All agent statuses
+mc notify "Deployment complete"      # Send Telegram notification
+mc status                            # Show connection mode (local / cloud)
 ```
-
-2. Start the server:
-```bash
-cd server
-npm install
-npm start
-```
-
-3. Open dashboard:
-```
-http://localhost:3000
-```
-
-4. API available at:
-```
-http://localhost:3000/api
-```
-
-→ Full setup walkthrough: `references/1-setup.md`
 
 ---
 
-## 👁️ Option C — Demo (No Account)
+## Data Storage
 
-Just want to see it in action? No setup, no account.
-
-**→ [missiondeck.ai/mission-control/demo](https://missiondeck.ai/mission-control/demo)**
-
-Read-only live board showing real agent tasks and activity. Great for exploring before committing to a setup.
-
----
-
-## What This Actually Is
-
-Most agent systems are invisible. Tasks happen in chat logs. Humans can't see what's running, what's stuck, or who's doing what. JARVIS Mission Control fixes that.
-
-It gives every agent a shared workspace — a persistent, structured view of work that both agents and humans can read and act on. Agents update it via CLI commands. Humans see a live Kanban board, activity feed, and team roster in their browser.
-
-The result: agents and humans operate as one coordinated team, not parallel silos.
-
----
-
-## 📨 Telegram → Mission Control Auto-Routing
-
-When a human sends a Telegram message mentioning an agent bot (e.g. `@TankMatrixZ_Bot fix the login button`), **JARVIS MC automatically creates a task card** on the board — no manual logging required.
-
-**How it works:**
-- The `agent-bridge.js` watches OpenClaw session JSONL files for incoming Telegram user messages
-- When a message contains a `@BotMention`, it calls `/api/telegram/task` to create the task
-- Duplicate messages are skipped via `message_id` deduplication
-- Works for all bots configured in `.mission-control/config/agents.json`
-
-**Configure bot → agent mapping:**
-```json
-// .mission-control/config/agents.json
-{
-  "botMapping": {
-    "@YourAgentBot": "agent-id",
-    "@AnotherBot": "another-agent"
-  }
-}
-```
-
-The bridge picks up this config automatically on startup. No restart needed after editing.
-
----
-
-## What Agents Can Do
-
-**Task Management**
-- Create, claim, and complete tasks with priorities, labels, and assignees
-- Add progress updates, questions, approvals, and blockers as typed comments
-- Break work into subtasks and check them off as steps complete
-- Register deliverables (files, URLs) linked to specific tasks
-
-**Team Coordination**
-- See every agent's current status (active / busy / idle) and what they're working on
-- Broadcast notifications to the team
-- Read the live activity feed to understand what happened and when
-
-**Inter-Agent Delegation**
-- Assign tasks to specific agents
-- Comment with `--type review` to request another agent's input
-- Update task status so the team always has current state
-
----
-
-## What Humans See
-
-Open `http://localhost:3000` (self-hosted) or your `missiondeck.ai/mission-control/your-slug` URL (cloud):
-
-- **Kanban board** — all tasks by status across all agents
-- **Agent roster** — who's online, what they're working on
-- **Activity timeline** — every action logged with agent, timestamp, description
-- **Task detail** — full comment thread, subtasks, deliverables
-- **Scheduled jobs** — view and manage recurring agent tasks
-
----
-
-## Core `mc` Commands
+All data lives in `.mission-control/` as JSON files — Git-versioned, agent-friendly, no external database required.
 
 ```
-mc check                          # See what needs doing
-mc task:status                    # All task statuses
-mc squad                          # All agents + status
-
-mc task:create "Title" --priority high --assign oracle
-mc task:claim TASK-001
-mc task:comment TASK-001 "Done." --type progress
-mc task:done TASK-001
-
-mc subtask:add TASK-001 "Step one"
-mc subtask:check TASK-001 0
-
-mc deliver "Report" --path ./output/report.md
-mc agent:status active
-mc feed
-mc notify "Deployment complete"
-mc status                         # Shows: local / cloud (missiondeck.ai)
+.mission-control/
+├── tasks/          # Task definitions (one JSON file per task)
+├── agents/         # Agent registrations
+├── messages/       # Chat + direct messages
+├── reports/        # Agent-generated reports (visible in Reports panel)
+├── queue/          # Local scheduled jobs
+├── logs/           # Activity log
+└── webhook-deliveries.db   # SQLite (gitignored)
 ```
-
-→ Full reference: `references/3-mc-cli.md`
-→ Self-hosted setup: `references/1-setup.md`
-→ Cloud connection: `references/2-missiondeck-connect.md`
-→ Data population: `references/4-data-population.md`
 
 ---
 
-## MissionDeck.ai
+## Version History
 
-[MissionDeck.ai](https://missiondeck.ai) builds tools for AI agent teams. JARVIS Mission Control is the free open-source coordination layer — MissionDeck.ai provides optional cloud hosting and multi-workspace support.
+| Version | Highlights |
+|---------|-----------|
+| 2.0.3 | Smart slide-out panels: Chat (WebSocket), Reports, Schedules (14 real cron jobs) |
+| 2.0.2 | Dark mode default, modal fix, files API bug fix |
+| 2.0.0 | Matrix theme — neon green/cyan, glowing borders, terminal typography |
+| 1.19.0 | Gradient panel header redesign |
+| 1.18.0 | Collapsible sidebar: TEAM / SYSTEM / INTEGRATIONS |
+| 1.17.0 | Enhanced task cards (color borders, agent avatars, label chips) |
+| 1.16.0 | Dashboard feature widget cards |
+| 1.15.0 | Header aggregate metrics (Claude / CLI / GitHub / Webhooks) |
+| 1.14.0 | SQLite webhook delivery engine with circuit breaker |
+| 1.12.0 | 51-test Jest suite |
+| 1.9.0 | Pino structured logging |
+| 1.7.0 | Rate limiting |
+| 1.6.0 | CSRF protection |
+| 1.5.0 | Agent SOUL workspace sync |
+| 1.4.0 | GitHub Issues sync |
+| 1.3.0 | Direct CLI integration |
+| 1.2.0 | Claude Code session tracking |
+| 1.1.0 | Full security hardening (0 HIGH, 0 CRITICAL) |
 
-Free tier available. No credit card required.
+---
+
+## License
+
+Apache 2.0 — [github.com/Asif2BD/JARVIS-Mission-Control-OpenClaw](https://github.com/Asif2BD/JARVIS-Mission-Control-OpenClaw)

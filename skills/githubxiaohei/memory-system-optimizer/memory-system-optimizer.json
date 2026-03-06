@@ -1,0 +1,40 @@
+{
+  "slug": "memory-system-optimizer",
+  "name": "Memory System Optimizer",
+  "description": "OpenCLAW 记忆系统优化 - 三层架构 + 自动衰减 + CRUD验证 + SkillPay收费",
+  "version": "1.2.0",
+  "author": {
+    "name": "Odin",
+    "contact": "wanglinhong"
+  },
+  "tags": ["memory", "openclaw", "optimization", "ai", "skillpay"],
+  "pricing": {
+    "type": "usage",
+    "price": 0.01,
+    "currency": "USDT",
+    "payment": "skillpay"
+  },
+  "files": [
+    "SKILL.md",
+    "scripts/memlog.sh",
+    "scripts/memory-gc.sh",
+    "scripts/memory-decay.js",
+    "scripts/memory-extract.js",
+    "scripts/billing.js",
+    "config/NOW.md",
+    "config/INDEX.md"
+  ],
+  "dependencies": {
+    "openclaw": ">=3.0.0"
+  },
+  "config": {
+    "required": [
+      "SKILLPAY_API_KEY",
+      "SKILLPAY_SKILL_ID"
+    ],
+    "env": {
+      "SKILLPAY_API_KEY": "SkillPay API Key",
+      "SKILLPAY_SKILL_ID": "SkillPay Skill ID"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: ravi-inbox
-description: Read incoming SMS or email messages — OTPs, verification codes, verification links, incoming mail. Do NOT use for sending email (use ravi-email-send) or managing credentials (use ravi-passwords or ravi-vault).
+description: Read incoming SMS or email messages — OTPs, verification codes, verification links, incoming mail. Do NOT use for sending email (use ravi-email-send) or managing credentials (use ravi-passwords or ravi-secrets).
 ---
 
 # Ravi Inbox
@@ -67,7 +67,7 @@ ravi inbox email <thread_id> --json
     {
       "id": 10,
       "from_email": "noreply@example.com",
-      "to_email": "janedoe@ravi.app",
+      "to_email": "janedoe@example.com",
       "subject": "Verify your email",
       "text_content": "Click here to verify: https://example.com/verify?token=xyz",
       "direction": "incoming",
@@ -110,11 +110,13 @@ ravi inbox email "$THREAD_ID" --json | jq -r '.messages[].text_content' | grep -
 ## Important Notes
 
 - **Poll, don't rush** — SMS/email delivery takes 2-10 seconds. Use `sleep 5` before checking.
+- **Auto-contacts** — Ravi automatically creates or updates contacts when you send or receive email/SMS. Use `ravi contacts search` to look up people you've interacted with.
 - **Always use `--json`** — human-readable output is not designed for parsing.
 
 ## Related Skills
 
 - **ravi-email-send** — Reply, reply-all, or forward emails you've read
 - **ravi-email-writing** — Write professional replies with proper formatting and tone
+- **ravi-contacts** — Look up a sender's name or details from their email/phone
 - **ravi-login** — End-to-end signup/login workflows that use inbox for OTP extraction
 - **ravi-feedback** — Report inbox delivery issues or suggest improvements

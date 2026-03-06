@@ -2,22 +2,15 @@
 name: safe-skill-advisor
 description: Security Skill Advisor - Help identify malicious skills, protect API keys and system security | Security audit, skill scanner, malware detection, best practices
 homepage: https://clawhub.ai/skills/safe-skill-advisor
-tags:
-  - security
-  - audit
-  - scanner
-  - malware-check
-  - best-practice
-  - safety
-  - protection
-  - risk-assessment
+tags: [security, audit, scanner, malware-check, best-practice, safety, protection, risk-assessment]
 ---
 
 # 🛡️ Security Skill Advisor
 
-**Version:** 1.4.0 (Metadata Fix)  
+**Version:** 1.5.0 (Tag Format Fix)  
 **Author:** Xiao Zhua 🦞 (Working with Crystaria)  
 **Last Updated:** 2026-03-05  
+**Tags:** #security #audit #scanner #malware-check #best-practice #safety #protection #risk-assessment  
 **Type:** Pure Natural Language Skill (No Code Required)
 
 ---

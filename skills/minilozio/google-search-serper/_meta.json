@@ -1,11 +1,17 @@
 {
   "owner": "minilozio",
   "slug": "google-search-serper",
-  "displayName": "Google Search Skill",
+  "displayName": "Google Search (Serper.dev)",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1772198872633,
-    "commit": "https://github.com/openclaw/skills/commit/9145d8f78c6deb06ee498263d76f47f5a98c3f3d"
+    "version": "1.0.3",
+    "publishedAt": 1772708102260,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1772198872633,
+      "commit": "https://github.com/openclaw/skills/commit/9145d8f78c6deb06ee498263d76f47f5a98c3f3d"
+    }
+  ]
 }

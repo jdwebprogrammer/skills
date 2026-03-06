@@ -1,3 +1,14 @@
+---
+name: google-search-serper
+description: >
+  Google Search powered by Serper.dev API — 9 search types: web, news, images,
+  videos, places, shopping, scholar, patents, autocomplete. Returns Knowledge Graph,
+  Answer Box, People Also Ask, and Related Searches. Use when asked to Google something,
+  search the web for current info, find news, look up images, research academic papers,
+  find local places, or when the user needs richer search results than basic web search.
+  Also use when Brave Search results are insufficient or the user explicitly wants Google results.
+---
+
 # Google Search Skill
 
 Google Search powered by Serper.dev API. Replaces Brave Search with richer results including Knowledge Graph, Answer Box, People Also Ask, and specialized search types.

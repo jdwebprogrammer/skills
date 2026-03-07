@@ -1,6 +1,6 @@
 ---
 name: team-builder
-description: Deploy a multi-agent SaaS growth team on OpenClaw with shared workspace, async inbox communication, cron-scheduled tasks, and optional Telegram integration. Use when user wants to create an AI agent team, build a multi-agent system, set up a growth/marketing/product team, or deploy agents for a SaaS product matrix. Supports customizable team name, agent roles, models, timezone, and Telegram bots.
+description: Deploy a multi-agent SaaS growth team on OpenClaw with shared workspace, async inbox communication, cron-scheduled tasks, deep project code scanning (Deep Dive), and optional Telegram integration. Use when user wants to create an AI agent team, build a multi-agent system, set up a growth/marketing/product team, or deploy agents for a SaaS product matrix. Includes Project Deep Dive capability where fullstack-dev scans codebases to generate comprehensive product knowledge files (DB schema, routes, models, services, auth, integrations, tech debt, etc.) that all agents consume for informed decision-making. Supports customizable team name, agent roles, models, timezone, and Telegram bots.
 ---
 
 # Team Builder
@@ -139,9 +139,17 @@ openclaw gateway restart
 
 User must edit:
 - `shared/decisions/active.md` -- strategy, priorities
-- `shared/products/_index.md` -- products, keywords, competitors
+- `shared/products/_index.md` -- products, keywords, competitors (include code directory paths!)
 - `shared/knowledge/competitor-map.md` -- competitor analysis
 - `shared/knowledge/tech-standards.md` -- coding standards
+
+### Step 7: Trigger Deep Dive Scans
+
+After filling in products with code directories, tell product-lead to trigger Deep Dive scans:
+1. Product-lead sends scan requests to fullstack-dev via inbox
+2. Fullstack-dev enters each project directory and generates knowledge files
+3. Product-lead reviews the generated files for completeness
+4. All agents now have deep project understanding for informed decisions
 
 ## Cron Schedule
 
@@ -164,9 +172,19 @@ User must edit:
 ├── apply-config.js, create-crons.ps1/.sh, README.md
 ├── agents/<7 agent dirs>/       (SOUL.md + MEMORY.md + memory/)
 └── shared/
-    ├── briefings/, decisions/, inbox/
+    ├── briefings/, decisions/, inbox/ (v2: with status tracking)
+    ├── status/team-dashboard.md     (chief-of-staff maintains, all agents read first)
     ├── data/                        (public data pool, data-analyst writes, all read)
-    ├── kanban/, knowledge/, products/
+    ├── kanban/, knowledge/
+    └── products/
+        ├── _index.md                (product matrix overview)
+        ├── _template/               (knowledge directory template)
+        └── {product}/               (per-product knowledge, up to 20 files)
+            ├── overview.md, architecture.md, database.md, api.md, routes.md
+            ├── models.md, services.md, frontend.md, auth.md, integrations.md
+            ├── jobs-events.md, config-env.md, dependencies.md, devops.md
+            ├── test-coverage.md, tech-debt.md, domain-flows.md, data-flow.md
+            ├── i18n.md, changelog.md, notes.md
 ```
 
 
@@ -232,13 +250,147 @@ The `shared/data/` directory serves as a read-only data pool for all agents:
 - Format: structured markdown or JSON, dated filenames (e.g., `metrics-2026-03-01.md`)
 - Retention: keep 30 days, archive older files
 
+## Project Deep Dive — Code Scanning
+
+Agents can deeply understand each SaaS product through automated code scanning. This is critical — without deep project knowledge, all team decisions are surface-level.
+
+### How It Works
+
+1. CEO adds a product to `shared/products/_index.md` (name, URL, code directory, tech stack)
+2. Product Lead triggers a Deep Dive scan by messaging Fullstack Dev via inbox
+3. Fullstack Dev enters the project directory (read-only) and scans the codebase
+4. Knowledge files are generated in `shared/products/{product}/`
+5. All agents read these files before making product-related decisions
+
+### Product Knowledge Directory
+
+Each product gets a knowledge directory with up to 20 files:
+
+```
+shared/products/{product}/
+├── overview.md          ← Product positioning (from _index.md)
+├── architecture.md      ← System architecture, tech stack, design patterns, layering
+├── database.md          ← Full table schema, relationships, indexes, migrations
+├── api.md               ← API endpoints, params, auth, versioning
+├── routes.md            ← Complete route table (Web + API + Console)
+├── models.md            ← ORM relationships, scopes, accessors, observers
+├── services.md          ← Business logic, state machines, workflows, validation
+├── frontend.md          ← Component tree, page routing, state management
+├── auth.md              ← Auth scheme, roles/permissions matrix, OAuth
+├── integrations.md      ← Third-party: payment/email/SMS/storage/CDN/analytics
+├── jobs-events.md       ← Queue jobs, event listeners, scheduled tasks, notifications
+├── config-env.md        ← Environment variables, feature flags, cache strategy
+├── dependencies.md      ← Key dependencies, custom packages, vulnerabilities
+├── devops.md            ← Deployment, CI/CD, Docker, monitoring, logging
+├── test-coverage.md     ← Test strategy, coverage, weak spots
+├── tech-debt.md         ← TODO/FIXME/HACK inventory, dead code, complexity hotspots
+├── domain-flows.md      ← Core user journeys, domain boundaries, module coupling
+├── data-flow.md         ← Data lifecycle: external → import → process → store → output
+├── i18n.md              ← Internationalization, language coverage
+├── changelog.md         ← Scan diff log (what changed between scans)
+└── notes.md             ← Agent discoveries, gotchas, implicit rules
+```
+
+### Scan Levels
+
+| Level | Scope | When | Output |
+|-------|-------|------|--------|
+| L0 Snapshot | Surface: directory tree, packages, env | First onboard | architecture, dependencies, config-env |
+| L1 Skeleton | Structure: DB, routes, models, components | First onboard | database, routes, api, models, frontend |
+| L2 Deep Dive | Logic: services, auth, jobs, integrations | On-demand per module | services, auth, jobs-events, integrations, domain-flows, data-flow |
+| L3 Health Check | Quality: tech debt, tests, security | Periodic / pre-release | tech-debt, test-coverage, devops |
+| L4 Incremental | Delta: git diff → update affected files | After code changes | changelog + targeted updates |
+
+### Content Standards
+
+Knowledge files capture not just WHAT exists but WHY:
+- **Design decisions**: Why this approach was chosen
+- **Implicit business rules**: Logic buried in code (e.g., "orders auto-cancel after 72h")
+- **Gotchas**: What breaks if you touch this module carelessly
+- **Cross-module coupling**: Where changing A silently breaks B
+- **Performance hotspots**: N+1 queries, missing indexes, bottleneck endpoints
+
+### Role Responsibilities
+
+| Role | Responsibility |
+|------|---------------|
+| Product Lead | **Governance**: trigger scans, review quality, track freshness, ensure completeness |
+| Fullstack Dev | **Execution**: enter code directory, scan, generate/update knowledge files |
+| All Agents | **Consumption**: read product knowledge before any product-related decision |
+
+### Per-Stack Auto-Detection
+
+Fullstack Dev auto-detects tech stack and applies stack-specific scan strategies:
+- **Laravel/PHP**: migrations, route:list, Models, Services, Middleware, Policies, Jobs, Console/Kernel
+- **React/Vue**: components, router, stores, API client, i18n
+- **Python/Django/FastAPI**: models.py, urls.py, views.py, middleware, celery
+- **General**: tree, git log, grep TODO/FIXME, .env.example, Docker, CI, tests
+
+## Team Coordination v2
+
+### Inbox Protocol v2 (status tracking)
+
+Every inbox message now has a `status` field:
+- `pending` → `received` → `in-progress` → `done` (or `blocked`)
+- Chief-of-staff monitors timeouts: high>4h, normal>24h pending = intervention
+- Blocked >8h = escalation to CEO
+- Recipients MUST update status immediately upon reading
+
+### Team Dashboard (`shared/status/team-dashboard.md`)
+
+Chief-of-staff maintains a "live scoreboard" updated every session:
+- 🔴 Urgent/Blocked items
+- 📊 Per-agent status table (last active, current task, status icon)
+- 📬 Unprocessed inbox summary (pending/blocked messages across all inboxes)
+- 🔗 Cross-agent task chain tracking (A→B→C with per-step status)
+- 📅 Today/Tomorrow focus
+
+**All agents read this file first when waking up.** 5-second situational awareness.
+
+### Chief-of-Staff as Router
+
+The chief is upgraded from "briefing writer" to "active team router":
+- **Blocker detection**: scans all inboxes for overdue messages
+- **Active dispatch**: writes reminders directly to lagging agents' inboxes
+- **Task chain tracking**: identifies multi-agent workflows and tracks each step
+- **Escalation**: persistent blockers get flagged to CEO
+- **Runs 4x/day** (morning brief, midday patrol, afternoon patrol, evening brief)
+
+### Cron Schedule (10 jobs, up from 7)
+
+| Time | Agent | Type | Purpose |
+|------|-------|------|---------|
+| 07:00 | data-analyst | daily | Data pull + feedback scan |
+| 08:00 | chief-of-staff | **announce** | Morning: router scan + brief + quality |
+| 09:00 | growth-lead | daily | GEO/SEO/community |
+| 09:00 | product-lead | **daily (NEW)** | Inbox + knowledge governance + task delegation |
+| 10:00 | content-chief | **daily M-F (was weekly)** | Content creation + collaboration |
+| 10:00 | fullstack-dev | **daily (enhanced)** | Inbox + Deep Dive + dev tasks + patrol |
+| 12:00 | chief-of-staff | **patrol (NEW)** | Router scan only, no brief |
+| 15:00 | chief-of-staff | **patrol (NEW)** | Router scan only, no brief |
+| 18:00 | chief-of-staff | **announce** | Evening: router scan + summary + next day plan |
+| 07:00 M/W/F | intel-analyst | 3x/week | Competitor scan |
+
+### Why These Changes Matter
+
+| Before | After | Impact |
+|--------|-------|--------|
+| Inbox = blind drop | Inbox with status tracking | Messages are acknowledged and trackable |
+| Chief 2x/day | Chief 4x/day with router role | Blockers caught within hours, not days |
+| Content-chief 1x/week | Daily M-F | Actually produces content |
+| Product-lead no cron | Daily | Knowledge governance happens |
+| No team dashboard | Dashboard every session | All agents know the full picture |
+| No timeout detection | Automatic timeout rules | Nothing falls through cracks |
+
 ## Key Design Decisions
 
 - **Shared workspace** so qmd indexes everything for all agents
-- **Async inbox** (shared/inbox/to-*.md) instead of agentToAgent (saves tokens, audit trail)
-- **Chief as hub** between CEO and team
+- **Inbox Protocol v2** with status tracking and timeout rules for reliable async communication
+- **Chief as Router** — not just a briefing writer but active coordinator who detects and resolves blockers
+- **Team Dashboard** — single source of truth for team-wide status, maintained by chief every session
 - **GEO as #1 priority** (AI search = blue ocean)
 - **Fullstack Dev spawns Claude Code** via ACP for complex tasks
+- **Project Deep Dive** gives all agents deep codebase understanding, not just surface-level product overviews
 
 ## Customization
 

@@ -1,0 +1,11 @@
+{
+  "owner": "googleworkspace-bot",
+  "slug": "persona-event-coordinator",
+  "displayName": "Persona Event Coordinator",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772838534521,
+    "commit": null
+  },
+  "history": []
+}

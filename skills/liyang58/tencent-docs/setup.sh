@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🚀 设置腾讯文档 MCP Skill（内部 OpenClaw 版本）..."
+echo "🚀 设置腾讯文档 MCP Skill（OpenClaw 版本）..."
 echo ""
 
 # 检查 mcporter

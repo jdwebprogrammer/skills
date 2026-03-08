@@ -3,11 +3,16 @@
   "slug": "tencent-docs",
   "displayName": "腾讯文档 tencent-docs",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1772625110881,
-    "commit": "https://github.com/openclaw/skills/commit/4f6ef1c702d104c1dab2c2047807d148131c5752"
+    "version": "1.0.4",
+    "publishedAt": 1772850116939,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1772625110881,
+      "commit": "https://github.com/openclaw/skills/commit/4f6ef1c702d104c1dab2c2047807d148131c5752"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1772424639664,

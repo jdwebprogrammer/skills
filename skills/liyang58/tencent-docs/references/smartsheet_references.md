@@ -965,7 +965,7 @@
 
 ## 典型工作流示例
 
-### 工作流一：从零创建任务管理表
+### 工作流一：从零创建表
 
 ```
 步骤 1：获取文档的工作表列表
@@ -977,7 +977,13 @@
 步骤 3：批量添加任务记录
   → smartsheet.add_records（写入多条任务数据）
 
-步骤 4：（可选）创建看板视图
+步骤 4：删除默认空行和默认列
+  → smartsheet.list_records（获取建表时自动生成的空行 record_id 列表）
+  → smartsheet.delete_records（传入空行 record_ids，批量删除默认空行）
+  → smartsheet.list_fields（获取建表时自动生成的默认列 field_id 列表）
+  → smartsheet.delete_fields（传入默认列 field_ids，批量删除默认列）
+
+步骤 5：（可选）创建看板视图
   → smartsheet.add_view（view_type=2，按状态分组）
 ```
 

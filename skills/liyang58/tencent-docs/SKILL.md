@@ -13,16 +13,36 @@ metadata: {"openclaw":{"requires":{"env":["TENCENT_DOCS_TOKEN"]},"primaryEnv":"T
 
 如需查看每个工具的详细调用示例、参数说明和返回值说明，请参考：
 - `references/api_references.md` - 包含所有工具的完整调用示例、参数说明、返回值说明及 API 结构、枚举值说明
+- `references/smartsheet_references.md` - 智能表格（SmartSheet）专项参考文档，包含字段类型枚举、字段值格式参考、典型工作流示例及所有 `smartsheet.*` 工具的详细说明
+- `references/smartcanvas_references.md` - 智能文档（SmartCanvas）专项参考文档，包含元素类型说明、富文本格式枚举、典型工作流示例及所有 `smartcanvas.*` 工具的详细说明
 
 ## ⚙️ 配置要求
+
+> ✅ **如果已有 MCP 配置** 如在codebuddy或其他ide工具中，则无需重复配置，可直接使用工具。
 
 ### 获取 Token
 
 1. 访问 [https://docs.qq.com/open/document/mcp/get-token/](https://docs.qq.com/open/document/mcp/get-token/) 获取你的 Token
 2. 登录后复制个人 Token
-3. 在 OpenClaw 中配置环境变量 `TENCENT_DOCS_TOKEN`
+3. 如果在 OpenClaw 中，配置环境变量 `TENCENT_DOCS_TOKEN`
 
 > ⚠️ **如果用户未配置 Token**，请引导用户访问上方链接获取 Token，否则所有工具调用将返回鉴权失败。
+
+### 配置 Token 到请求 Header
+
+在 MCP 客户端配置中，Token 需通过 HTTP 请求头传递，**Header 的 key 必须为 `Authorization`**，示例如下：
+
+```json
+{
+  "headers": {
+    "Authorization": "你的Token值"
+  }
+}
+```
+
+> ⚠️ **重要**：无论使用何种 MCP 客户端，调用时 Header 的 key **必须**使用 `Authorization`，不能使用其他名称（如 `token`、`auth`、`X-Token` 等），否则鉴权将失败。
+>
+> 💡 不同 MCP 客户端的配置方式可能略有差异，但 Header key 统一使用 `Authorization`。
 
 ### MCP 服务地址
 
@@ -81,8 +101,8 @@ arguments: { ... }
 | search_space_file | `search_space_file` | 搜索空间文件 |
 | get_content | `get_content` | 获取文档内容 |
 | batch_update_sheet_range | `batch_update_sheet_range` | 批量更新表格 |
-| create_smartcanvas_element | `create_smartcanvas_element` | 追加智能文档内容 |
-| smartsheet.* | 见下方第 4 节 | 智能表格操作（工作表/视图/字段/记录），详见 `references/smartsheet_references.md` |
+| smartcanvas.* | 见下方第 4 节 | 智能文档元素操作（页面/文本/标题/待办事项），详见 `references/smartcanvas_references.md` |
+| smartsheet.* | 见下方第 5 节 | 智能表格操作（工作表/视图/字段/记录），详见 `references/smartsheet_references.md` |
 
 **详细调用示例请参考：`references/api_references.md`**
 
@@ -90,19 +110,22 @@ arguments: { ... }
 
 > **首选推荐：智能文档（smartcanvas）**
 >
-> 在创建文档时，**优先使用 `create_smartcanvas_by_markdown`** 创建智能文档，原因如下：
-> - 📝 排版效果更美观，自动优化布局
-> - 🎨 支持更丰富的格式（标题、段落、列表、表格、代码块、引用、图片等）
-> - 🔧 支持后续通过 `create_smartcanvas_element` 追加内容
-> - 📱 跨平台显示效果一致
+> - **新增文档**：优先使用 `create_smartcanvas_by_markdown` 创建智能文档，原因如下：
+>   - 📝 排版效果更美观，自动优化布局
+>   - 🎨 支持更丰富的格式（标题、段落、列表、表格、代码块、引用、图片等）
+>   - 📱 跨平台显示效果一致
+> - **编辑已有文档**：使用 `smartcanvas.*` 系列工具对已有智能文档进行增删改查操作，详见 `references/smartcanvas_references.md`
 
 ### 文档类型选择决策树
 
 ```
 需要创建什么类型的内容？
 │
-├─ 通用文档内容（报告、笔记、文章等）
+├─ 新增通用文档内容（报告、笔记、文章等）
 │   └─ ✅ 使用 create_smartcanvas_by_markdown（首选）
+│
+├─ 编辑/追加已有智能文档内容
+│   └─ ✅ 使用 smartcanvas.* 工具（详见 `references/smartcanvas_references.md`）
 │
 ├─ 数据表格（需要计算、筛选、统计）
 │   └─ ✅ 使用 create_excel_by_markdown
@@ -253,13 +276,64 @@ arguments: { ... }
 
 > 📖 调用示例请参考：`references/api_references.md` - batch_update_sheet_range
 
-#### create_smartcanvas_element
+#### smartcanvas.create_smartcanvas_element
 
-在已有智能文档中追加内容，这是 smartcanvas 的独特优势。
+在已有智能文档中新增元素，支持添加页面（Page）、文本（Text）、标题（Heading）、待办事项（Task）等多种类型元素。
 
-> 📖 调用示例请参考：`references/api_references.md` - create_smartcanvas_element
+**元素层级约束**：
+- `Text`、`Task`、`Heading` 必须挂载在 `Page` 类型父节点下（`parent_id` 必填）
+- `Page` 可不指定父节点，插入到根节点
+- 父节点不支持为 `Heading` 类型
 
-### 4. 智能表格（SmartSheet）操作类
+> 📖 完整说明请参考：`references/smartcanvas_references.md` - smartcanvas.create_smartcanvas_element
+
+#### smartcanvas.get_element_info
+
+批量查询指定元素的详细信息，支持同时查询多个元素的内容、类型、父子关系等。
+
+> 📖 完整说明请参考：`references/smartcanvas_references.md` - smartcanvas.get_element_info
+
+#### smartcanvas.get_page_info
+
+查询指定页面内的所有元素，支持分页获取。使用 `cursor` 参数进行分页，`is_over=true` 表示已获取全部内容。
+
+> 📖 完整说明请参考：`references/smartcanvas_references.md` - smartcanvas.get_page_info
+
+#### smartcanvas.get_top_level_pages
+
+查询文档的所有顶层页面列表，返回根节点下的直接子页面，用于了解文档目录结构。
+
+> 📖 完整说明请参考：`references/smartcanvas_references.md` - smartcanvas.get_top_level_pages
+
+#### smartcanvas.update_element
+
+批量修改元素内容，支持同时更新多个元素的文本、格式、标题级别、页面标题等属性。
+
+> 📖 完整说明请参考：`references/smartcanvas_references.md` - smartcanvas.update_element
+
+#### smartcanvas.delete_element
+
+批量删除元素，支持同时删除多个指定元素。
+
+> ⚠️ 删除 Page 元素时，其下所有子元素也会被一并删除，请谨慎操作。
+
+> 📖 完整说明请参考：`references/smartcanvas_references.md` - smartcanvas.delete_element
+
+#### smartcanvas.append_insert_smartcanvas_by_markdown
+
+通过 Markdown 文本向已有智能文档追加内容，内容追加到文档末尾。
+
+> 📖 完整说明请参考：`references/smartcanvas_references.md` - smartcanvas.append_insert_smartcanvas_by_markdown
+
+### 4. 智能文档（SmartCanvas）元素操作类
+
+智能文档支持对页面、文本、标题、待办事项等元素进行完整的增删改查操作，共 7 个工具（`smartcanvas.*`）。
+
+> 📖 **所有工具的完整说明（使用场景、元素类型定义、枚举值、参数示例）请查阅：`references/smartcanvas_references.md`**
+>
+> 包含：元素新增、元素查询、页面内容查询、顶层页面查询、元素修改、元素删除、Markdown 追加，以及标题级别枚举、颜色枚举、富文本格式说明、典型工作流示例。
+
+### 5. 智能表格（SmartSheet）操作类
 
 智能表格支持对工作表、视图、字段、记录进行完整的增删改查操作，共 12 个工具（`smartsheet.*`）。
 
@@ -274,7 +348,18 @@ arguments: { ... }
 ```
 1. 优先调用 create_smartcanvas_by_markdown 创建智能文档
 2. 从返回结果中获取 file_id 和 url
-3. 如需追加内容，调用 create_smartcanvas_element
+```
+
+### 编辑已有智能文档
+
+```
+1. 调用 smartcanvas.get_top_level_pages 获取文档页面结构
+2. 按需调用 smartcanvas.* 工具进行增删改查：
+   - 追加内容：smartcanvas.append_insert_smartcanvas_by_markdown（Markdown 方式）
+   - 新增元素：smartcanvas.create_smartcanvas_element
+   - 查询元素：smartcanvas.get_element_info / smartcanvas.get_page_info
+   - 修改元素：smartcanvas.update_element
+   - 删除元素：smartcanvas.delete_element
 ```
 
 ### 组织文档到指定目录
@@ -311,7 +396,7 @@ arguments: { ... }
 
 ## 注意事项
 
-- **默认使用 smartcanvas**：除非用户明确指定其他格式，否则创建文档时优先使用智能文档
+- **默认使用 smartcanvas**：除非用户明确指定其他格式，否则**新增文档**时优先使用 `create_smartcanvas_by_markdown`；**编辑已有智能文档**时使用 `smartcanvas.*` 系列工具
 - **创建文档时支持 `parent_id`**：所有 `create_*_by_markdown` 和 `create_flowchart_by_mermaid` 工具均支持 `parent_id` 参数，可将文档直接创建到指定目录；不填则在根目录创建
 - **删除节点**：`delete_space_node` 默认仅删除当前节点（`remove_type=current`），使用 `all` 时会递归删除所有子节点，需谨慎
 - Markdown 内容使用 UTF-8 格式，特殊字符无需转义
@@ -319,6 +404,9 @@ arguments: { ... }
 - 分页查询每页返回 20-40 条记录，使用 `has_next` 判断是否有更多
 - `node_id` 同时也是文档的 `file_id`
 - `create_flowchart_by_mermaid` 的 mermaid 内容必须全部使用英文
+- **智能文档元素操作**：`Text`、`Heading`、`Task` 必须挂载在 `Page` 下，`parent_id` 必须为 Page 类型元素 ID；操作前先调用 `smartcanvas.get_top_level_pages` 获取页面结构
+- **智能文档分页查询**：`smartcanvas.get_page_info` 使用 `cursor` 分页，`is_over=true` 表示已获取全部内容
+- **智能文档删除注意**：删除 Page 元素时，其下所有子元素也会被一并删除
 - **智能表格操作**：所有 smartsheet.* 工具都需要 `file_id` 和 `sheet_id`，操作前先调用 `smartsheet.list_tables` 获取 sheet_id
 - **字段类型不可更新**：`update_fields` 时 field_type 不能修改，但必须传入原值
 - **记录字段值格式**：不同字段类型的值格式不同，详见 `references/smartsheet_references.md` - 字段值格式参考

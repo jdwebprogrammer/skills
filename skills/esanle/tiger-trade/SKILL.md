@@ -9,7 +9,7 @@ Execute trades via Tiger Brokers API.
 
 ## Setup
 
-Create config file at `~/.tiger-config.json`:
+Create config file at `~/.tiger-config.json `:
 ```json
 {
   "tiger_id": "your_tiger_id",
@@ -18,28 +18,16 @@ Create config file at `~/.tiger-config.json`:
 }
 ```
 
-## Check HK Stock Prices
+## Check Stock Prices
 
 Use Tiger Broker website to get current prices:
 
 ```
 https://www.itiger.com/hant/stock/02800
+https://www.itiger.com/hant/stock/AAPL
 ```
 
-Replace the stock code (02800) with any HK stock:
-
-| Code | Name |
-|------|------|
-| 02800 | 盈富基金 (Tracker Fund) |
-| 00700 | 腾讯 (Tencent) |
-| 09988 | 阿里巴巴 (Alibaba) |
-| 03690 | 美团 (Meituan) |
-| 01810 | 小米 (Xiaomi) |
-| 00981 | 中芯国际 (SMIC) |
-| 00005 | 汇丰 (HSBC) |
-| 02318 | 中国平安 (Ping An) |
-| 02269 | 药明生物 (WuXi Biologics) |
-| 01928 | 金沙中国 (Sands China) |
+Replace the stock code (02800 or AAPL) with any stock 
 
 ## Quick Trade
 
@@ -61,7 +49,7 @@ client_config.sandbox = False
 
 client = TradeClient(client_config)
 
-# Place HK stock order
+# Place stock order
 contracts = client.get_contracts(['02800'])
 if contracts:
     order_params = PlaceModifyOrderParams()

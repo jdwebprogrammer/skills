@@ -1,0 +1,11 @@
+{
+  "owner": "limboinf",
+  "slug": "funasr-transcribe-skill",
+  "displayName": "FunASR 语音转录",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772877767626,
+    "commit": null
+  },
+  "history": []
+}

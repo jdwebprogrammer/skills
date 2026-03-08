@@ -6,7 +6,7 @@
 
 'use strict';
 
-const mg = require('../../../mindgraph-client.js');
+const mg = require('../mindgraph-client.js');
 
 async function run() {
   console.log('📡 Fetching nodes missing embeddings...');

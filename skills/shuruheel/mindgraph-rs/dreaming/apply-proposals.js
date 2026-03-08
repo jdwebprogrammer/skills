@@ -10,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const mg = require('../../../mindgraph-client.js');
+const mg = require('../mindgraph-client.js');
 
 const DREAM_DIR = path.join(__dirname, '.dream');
 
@@ -25,6 +25,7 @@ function getOpenAIKey() {
 }
 
 function getMgToken() {
+  if (process.env.MINDGRAPH_TOKEN) return process.env.MINDGRAPH_TOKEN;
   try {
     return JSON.parse(fs.readFileSync(path.join(process.env.HOME, '.openclaw/mindgraph.json'), 'utf8')).token;
   } catch { return null; }

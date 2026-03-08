@@ -6,7 +6,7 @@
  *   --force: Reconfigure embedding dimension if already set to a different value
  */
 
-const mg = require('../../mindgraph-client.js');
+const mg = require('./mindgraph-client.js');
 const https = require('https');
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;

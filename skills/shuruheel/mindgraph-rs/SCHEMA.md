@@ -19,6 +19,9 @@ Use the **most specific** type available. Never default to `Claim` when a more p
 | `Observation` | Something that happened or was reported at a specific time | `content`, `observed_at` (unix timestamp) |
 
 ### Epistemic layer (24 types)
+> **Primary types** (commonly extracted): Claim, Evidence, Warrant, Argument, Hypothesis, Anomaly, Pattern, Concept, Mechanism, Question.
+> **Specialized types** (use when specifically relevant): Method, Experiment, Model, Theory, Paradigm, Analogy, Theorem, Equation, ModelEvaluation, InferenceChain, SensitivityAnalysis, ReasoningStrategy, Assumption, OpenQuestion.
+
 | Type | Use when | Key props |
 |------|----------|-----------|
 | `Claim` | A currently-held belief or factual assertion | `content`, `truth_status`, `certainty_degree` |
@@ -29,7 +32,7 @@ Use the **most specific** type available. Never default to `Claim` when a more p
 | `Theory` | A named framework or comprehensive explanation | `name`, `description`, `domain`, `status` |
 | `Paradigm` | A dominant worldview or overarching framework in a domain | `name`, `description`, `domain` |
 | `Anomaly` | A surprising finding or contradiction with expected behavior | `description`, `anomaly_type`, `severity`, `status` |
-| `Method` | A research technique, procedure, or approach | `name`, `method_type`, `domain` |
+| `Method` | A research technique, procedure, or approach | `name`, `description`, `method_type`, `domain`, `parameters`, `limitations` |
 | `Experiment` | A specific test or investigation | `description`, `status` |
 | `Concept` | An abstract idea being defined or explained | `name`, `definition`, `domain` |
 | `Assumption` | An implicit or explicit premise underlying a claim | `content`, `assumption_type`, `explicit_in_text` |
@@ -37,12 +40,12 @@ Use the **most specific** type available. Never default to `Claim` when a more p
 | `OpenQuestion` | An unresolved foundational question | `text`, `scope`, `status` |
 | `Analogy` | A comparison between domains used to explain or argue | `description`, `source_domain`, `target_domain` |
 | `Pattern` | A recurring lesson or generalizable rule | `summary` (the lesson — used for FTS) |
-| `Mechanism` | A causal, functional, or structural process | `description`, `mechanism_type`, `components` |
+| `Mechanism` | A causal, functional, or structural process | `name`, `description`, `components`, `interactions`, `input`, `output` |
 | `Model` | An ML model or formal computational/mathematical model | `name`, `model_type`, `domain` |
-| `ModelEvaluation` | An assessment of a model's performance or validity | `description` |
+| `ModelEvaluation` | An assessment of a model's performance or validity | `evaluation_type`, `metrics`, `failure_domains`, `comparison_to`, `evaluation_date` |
 | `InferenceChain` | A sequence of logical steps leading to a conclusion | `summary` |
-| `SensitivityAnalysis` | Analysis of how outputs change with input variation | `description` |
-| `ReasoningStrategy` | A high-level approach to reasoning about a problem | `summary` |
+| `SensitivityAnalysis` | Analysis of how outputs change with input variation | `analysis_type`, `target_claim_uid`, `sensitivity_map`, `critical_inputs`, `robustness_score` |
+| `ReasoningStrategy` | A high-level approach to reasoning about a problem | `name`, `description`, `strategy_type`, `applicable_contexts`, `limitations` |
 | `Theorem` | A formally proved mathematical or logical statement | `statement`, `domain` |
 | `Equation` | A mathematical or formal equation | `expression`, `domain` |
 
@@ -53,7 +56,7 @@ Use the **most specific** type available. Never default to `Claim` when a more p
 | `Project` | An ongoing or completed body of work | `name`, `description`, `status` |
 | `Decision` | A made choice with rationale, incl. prioritization calls | `question`, `status`, `decision_rationale`, `reversibility` |
 | `Constraint` | A binding must/must-not rule | `description`, `hard` (bool), `constraint_type` |
-| `Milestone` | A specific deliverable within a Project | `description`, `status`, `due_date` |
+| `Milestone` | A specific deliverable within a Project | `description`, `status`, `target_date`, `reached_at`, `criteria` |
 | `Option` | An alternative considered in a Decision | `description`, `pros`, `cons`, `score` |
 
 ### Action layer (5 types)
@@ -160,6 +163,8 @@ As of v0.7.2 (Phase 0.5.2), FTS indexes **all user-authored text**: `label`, `su
 ## Entity Dedup
 
 As of v0.7.2 (Phase 0.5.3), use `findOrCreateEntity(label, entityType)` client-side (or `find_or_create_entity()` library-side) for Entity creation. It checks exact alias match, then case-insensitive label match, and returns existing entity or creates new one.
+
+As of v0.8.0, `entity_type` is passed inside `props` for the `create` action (the server reads `props.entity_type`). `mg.manageEntity({ action: 'create', label, entityType })` handles this mapping automatically. When `props` are provided on create, they are applied to the newly created entity (not applied to existing entity if dedup finds a match).
 
 ## Hybrid Retrieval
 

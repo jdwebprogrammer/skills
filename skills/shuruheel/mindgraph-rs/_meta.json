@@ -1,13 +1,18 @@
 {
   "owner": "shuruheel",
   "slug": "mindgraph-rs",
-  "displayName": "MindGraph",
+  "displayName": "mindgraph-rs",
   "latest": {
-    "version": "5.0.1",
-    "publishedAt": 1772770381139,
-    "commit": "https://github.com/openclaw/skills/commit/5e3ae7af576690fc2f84925e68022f32855c97f9"
+    "version": "5.1.0",
+    "publishedAt": 1772935859563,
+    "commit": null
   },
   "history": [
+    {
+      "version": "5.0.1",
+      "publishedAt": 1772770381139,
+      "commit": "https://github.com/openclaw/skills/commit/5e3ae7af576690fc2f84925e68022f32855c97f9"
+    },
     {
       "version": "1.14.1",
       "publishedAt": 1772580064633,

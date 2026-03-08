@@ -42,7 +42,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const mg = require('/home/node/.openclaw/workspace/mindgraph-client.js');
+const mg = require('./mindgraph-client.js');
 const { resolveEntity } = require('/home/node/.openclaw/workspace/skills/mindgraph/entity-resolution.js');
 
 const AGENT_ID = 'email-monitor';

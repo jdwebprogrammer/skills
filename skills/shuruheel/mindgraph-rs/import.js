@@ -14,8 +14,9 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const mg = require('/home/node/.openclaw/workspace/mindgraph-client.js');
+const mg = require('./mindgraph-client.js');
 const { resolveEntity, normalizeLabel, loadAliasesFromGraph } = require('./entity-resolution.js');
+const { routeNode } = require('./route-node.js');
 
 // ─── Deduplication & Cache ────────────────────────────────────────────────────
 
@@ -54,145 +55,25 @@ async function writeNode(node, opts) {
     }
   }
 
-  if (dryRun) {
-    const fakeUid = `dry-${Math.random().toString(36).slice(2, 10)}`;
-    console.log(`  DRY-RUN CREATE [${node.type}]: ${node.label}`);
-    nodeCache.set(node.label, fakeUid);
-    return fakeUid;
-  }
-
-  const type = node.type.toLowerCase();
-  const label = node.label;
-  const content = node.props?.content || node.summary || '';
-  const props = node.props || {};
-
   try {
-    let result;
-    
-    switch (type) {
-      // 1. Reality
-      case 'claim':
-        // Use addArgument for claims to satisfy server schema
-        result = await mg.addArgument({
-          claim: { label, content },
-          confidence: node.confidence || 0.5,
-          agentId: opts.agentId || 'importer'
-        });
-        break;
-      case 'observation':
-      case 'snippet':
-      case 'source':
-        result = await mg.ingest(label, content, type, { confidence: node.confidence });
-        break;
+    const { result, skipped, fallback } = await routeNode(node, { dryRun });
 
-      // 2. Entity (uses dedup-safe findOrCreateEntity from Phase 0.5.3)
-      case 'entity':
-      case 'person':
-      case 'organization':
-      case 'service':
-      case 'product':
-      case 'location':
-        result = await mg.findOrCreateEntity(label, node.type);
-        break;
-
-      // 3. Epistemic Layer
-      case 'argument':
-        result = await mg.addArgument({ ...props, label });
-        break;
-      case 'inquiry':
-      case 'question':
-      case 'hypothesis':
-      case 'anomaly':
-        result = await mg.addInquiry(label, content, type, props);
-        break;
-      case 'structure':
-      case 'concept':
-      case 'pattern':
-      case 'theory':
-        result = await mg.addStructure(label, content, type, props);
-        break;
-
-      // 4. Intent Layer
-      case 'commitment':
-      case 'goal':
-      case 'project':
-      case 'milestone':
-        result = await mg.addCommitment(label, content, type, props);
-        break;
-      case 'constraint':
-      case 'policy':
-        // Map constraints to governance policies
-        result = await mg.governance({
-          action: 'create_policy',
-          label,
-          policyContent: content,
-          agentId: opts.agentId || 'importer'
-        });
-        break;
-      case 'decision':
-      case 'option':
-        result = await mg.deliberate({ action: 'open_decision', label, description: content, ...props });
-        break;
-
-      // 5. Action Layer
-      case 'flow':
-      case 'flowstep':
-      case 'affordance':
-      case 'control':
-        result = await mg.procedure({ action: 'create_flow', label, description: content, ...props });
-        break;
-      case 'risk':
-      case 'filter':
-        result = await mg.risk({ action: 'assess', label, description: content, ...props });
-        break;
-
-      // 6. Memory Layer
-      case 'session':
-      case 'trace':
-        result = await mg.sessionOp({ action: 'open', label, focus: content, ...props });
-        break;
-      case 'summary':
-        result = await mg.distill(label, content, props);
-        break;
-      case 'memorypolicy':
-      case 'preference':
-        result = await mg.memoryConfig({ action: 'set_preference', label, value: content, ...props });
-        break;
-      case 'journal':
-        result = await mg.addJournal(label, content, {
-          summary: node.summary,
-          journalType: props.journal_type || 'note',
-          tags: props.tags || [],
-          sessionUid: props.session_uid,
-        });
-        break;
-
-      // 7. Agent Layer
-      case 'plan':
-      case 'task':
-        result = await mg.plan({ action: 'create_task', label, description: content, ...props });
-        break;
-      case 'governance':
-      case 'policy':
-        result = await mg.governance({ action: 'create_policy', label, policyContent: content, ...props });
-        break;
-      case 'execution':
-        result = await mg.execution({ action: 'start', label, ...props });
-        break;
-
-      default:
-        // Fallback to ingest if type is unrecognized
-        result = await mg.ingest(label, content, type, props);
+    if (skipped) {
+      console.error(`  SKIP [${node.type}]: "${node.label}" — not auto-imported`);
+      return null;
+    }
+    if (fallback) {
+      console.error(`  FALLBACK [${node.type}]: "${node.label}" → ingest as observation`);
     }
 
     const uid = result?.uid;
     if (uid) {
-      nodeCache.set(label, uid);
-      console.log(`  CREATED [${node.type}]: ${label} → ${uid}`);
+      nodeCache.set(node.label, uid);
+      console.log(`  ${dryRun ? 'DRY-RUN' : 'CREATED'} [${node.type}]: ${node.label} → ${uid}`);
     }
     return uid;
   } catch (e) {
-    console.error(`  ERROR creating "${label}": ${e.message}`);
+    console.error(`  ERROR creating "${node.label}": ${e.message}`);
     return null;
   }
 }

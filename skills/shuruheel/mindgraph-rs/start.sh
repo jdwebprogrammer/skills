@@ -1,5 +1,11 @@
 #!/bin/bash
 # MindGraph Server Start Script
+# In cloud mode (MINDGRAPH_URL set to an https:// endpoint), this script is a no-op.
+
+if [[ "${MINDGRAPH_URL:-}" == https://* ]]; then
+  echo "☁️  Cloud mode detected (MINDGRAPH_URL=$MINDGRAPH_URL) — skipping local server start."
+  exit 0
+fi
 
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"

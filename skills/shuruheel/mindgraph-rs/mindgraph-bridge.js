@@ -8,6 +8,7 @@
 'use strict';
 
 const mg = require('./mindgraph-client.js');
+const { routeNode } = require('./route-node.js');
 
 // ─── FTS query sanitiser ──────────────────────────────────────────────────────
 
@@ -109,94 +110,45 @@ async function writeBatch(items, { defaultAgentId, sessionUid } = {}) {
 
   for (const item of items) {
     const agentId = item.agentId || defaultAgentId;
-    let uid = null;
-    let upsert = 'created';
 
     try {
-      let node;
-      switch (item.type.toLowerCase()) {
-        case 'claim':
-        case 'observation':
-        case 'snippet': {
-          node = await mg.ingest(item.label, item.content || '', item.type.toLowerCase(), { 
-            confidence: item.confidence, 
-            agentId 
-          });
-          break;
-        }
-        case 'entity': {
-          node = await mg.manageEntity({ 
-            action: 'create', 
-            label: item.label, 
-            entityType: item.entityType || 'Organization',
-            agentId 
-          });
-          break;
-        }
-        case 'goal':
-        case 'project': {
-          node = await mg.addCommitment(item.label, item.content || item.label, item.type.toLowerCase(), {
-            status: 'active',
-            agentId
-          });
-          break;
-        }
-        case 'decision': {
-          node = await mg.deliberate({
-            action: 'open_decision',
-            label: item.label,
-            description: item.content || '',
-            agentId
-          });
-          // If content provided, resolve it immediately
-          if (item.content) {
-            node = await mg.deliberate({
-              action: 'resolve',
-              decisionUid: node.uid,
-              resolutionRationale: item.content,
-              agentId
-            });
-          }
-          break;
-        }
-        case 'task': {
-          node = await mg.plan({
-            action: 'create_task',
-            label: item.label,
-            description: item.content || '',
-            agentId
-          });
-          break;
-        }
-        case 'preference': {
-          node = await mg.memoryConfig({
-            action: 'set_preference',
-            label: item.label,
-            value: item.content || '',
-            agentId
-          });
-          break;
-        }
-        default:
-          console.error(`Unknown item type: ${item.type}`);
-          continue;
+      // Normalize bridge item format → routeNode's expected shape
+      const node = {
+        label: item.label,
+        type: item.type,
+        summary: item.summary || '',
+        confidence: item.confidence,
+        props: {
+          content: item.content || '',
+          ...(item.entityType ? { entity_type: item.entityType } : {}),
+          ...(item.truthStatus ? { truth_status: item.truthStatus } : {}),
+          ...(item.certaintyDegree ? { certainty_degree: item.certaintyDegree } : {}),
+          ...(item.props || {}),
+        },
+      };
+
+      const { result, skipped, fallback } = await routeNode(node, { agentId });
+
+      if (skipped) {
+        console.error(`  SKIP [${item.type}]: "${item.label}" — not auto-imported`);
+        results.push({ label: item.label, uid: null, type: item.type, skipped: true });
+        continue;
       }
 
-      if (node) {
-        uid = node.uid;
-        upsert = node._upsert || 'created';
-        if (sessionUid) {
-          await mg.sessionOp({
-            action: 'trace',
-            session_uid: sessionUid,
-            relevant_node_uids: [uid],
-            trace_content: `Captured ${item.type}: ${item.label}`,
-            agentId
-          }).catch(() => {});
-        }
+      const uid = result?.uid || null;
+      const upsert = result?._upsert || 'created';
+
+      if (uid && sessionUid) {
+        await mg.sessionOp({
+          action: 'trace',
+          session_uid: sessionUid,
+          relevant_node_uids: [uid],
+          trace_content: `Captured ${item.type}: ${item.label}`,
+          agentId,
+        }).catch(() => {});
       }
 
-      results.push({ label: item.label, uid, type: item.type, upsert });
+      results.push({ label: item.label, uid, type: item.type, upsert, fallback: fallback || undefined });
     } catch (err) {
       console.error(`Failed to write "${item.label}": ${err.message}`);
       results.push({ label: item.label, uid: null, error: err.message });
@@ -267,8 +219,11 @@ async function cli() {
       const content = args[1] || '';
       const conf = args.includes('--confidence') ? parseFloat(args[args.indexOf('--confidence') + 1]) : 0.8;
       if (!label) { console.error('Usage: write-fact <label> [content] [--confidence N]'); process.exit(1); }
-      const node = await mg.ingest(label, content, 'claim', { confidence: conf });
-      console.log(JSON.stringify({ uid: node.uid, label: node.label, upsert: node._upsert }));
+      const { result } = await routeNode(
+        { label, type: 'claim', props: { content }, confidence: conf },
+        {}
+      );
+      console.log(JSON.stringify({ uid: result.uid, label: result.label, upsert: result._upsert }));
       break;
     }
 

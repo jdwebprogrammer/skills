@@ -5,7 +5,7 @@
 
 'use strict';
 
-const mg = require('../../../mindgraph-client.js');
+const mg = require('../mindgraph-client.js');
 
 async function hasEmbedding(uid) {
   // Check if a vector is actually stored, even if embedding_ref is null.

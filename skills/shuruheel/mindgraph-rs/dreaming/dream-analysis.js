@@ -18,7 +18,7 @@
 
 'use strict';
 
-const mg = require('../../../mindgraph-client.js');
+const mg = require('../mindgraph-client.js');
 
 const { analyzeEmbeddings } = require('./embedding-analysis.js');
 const { analyzeRichEnrichment } = require('./rich-enrichment.js');
@@ -554,11 +554,14 @@ async function analyzeInferenceChains() {
           if (proposals.length >= MAX) break;
 
           // Only suggest A→C if it doesn't exist in either direction
-          const [fwd, rev] = await Promise.all([
-            mg.edgeBetween(nodeA.uid, e2.to_uid),
-            mg.edgeBetween(e2.to_uid, nodeA.uid),
+          // (mg.edgeBetween removed in Phase 0.5 — use getEdges + filter instead)
+          const [fwdEdges, revEdges] = await Promise.all([
+            mg.getEdges(nodeA.uid).catch(() => []),
+            mg.getEdges(e2.to_uid).catch(() => []),
           ]);
-          if (fwd?.length || rev?.length) continue;
+          const fwd = fwdEdges.filter(e => e.to_uid === e2.to_uid);
+          const rev = revEdges.filter(e => e.to_uid === nodeA.uid);
+          if (fwd.length || rev.length) continue;
 
           // Fetch middle and end node labels for readable proposal text
           const [nodeB, nodeC] = await Promise.all([
@@ -843,7 +846,10 @@ async function analyzeDecisionExpiration() {
   const proposals = [];
 
   try {
-    const decisions = await mg.openDecisions();
+    // mg.openDecisions() removed in Phase 0.5 — fetch all Decision nodes and filter by status
+    const allDecNodes = await mg.getNodes({ nodeType: 'Decision', limit: 200 });
+    const decItems = Array.isArray(allDecNodes) ? allDecNodes : (allDecNodes?.items || []);
+    const decisions = decItems.filter(d => d.props?.status === 'open');
     const now_ts = Date.now();
 
     for (const dec of decisions) {
@@ -1266,10 +1272,10 @@ async function analyzeDuplicateNodes() {
 
       const keep = nodes[0];
       for (const dupe of nodes.slice(1)) {
-        // Skip if both have real content and different types — might be intentional
-        const bothHaveContent = (dupe.summary || '').length > 20 && (keep.summary || '').length > 20;
-        const differentType = dupe.node_type !== keep.node_type;
-        if (bothHaveContent && differentType) continue;
+        // Only flag true duplicates: same node_type required.
+        // Different types with the same label are intentional schema distinctions
+        // (e.g. Entity "Aaron Goh" + Source "[Email] Aaron Goh" are NOT duplicates).
+        if (dupe.node_type !== keep.node_type) continue;
 
         const isShell = !dupe.summary && dupe.salience <= 0.5;
         const impact = isShell ? 'low' : 'medium';

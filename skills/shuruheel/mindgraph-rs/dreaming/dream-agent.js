@@ -10,7 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const mg = require('../../../mindgraph-client.js');
+const mg = require('../mindgraph-client.js');
 const { 
   analyzers,
   getAnalyzersForSchedule,

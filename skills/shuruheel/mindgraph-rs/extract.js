@@ -30,9 +30,8 @@ const { resolveEntity, normalizeLabel, loadAliasesFromGraph } = require('./entit
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const WORKSPACE          = '/home/node/.openclaw/workspace';
-const SCHEMA_PATH        = path.join(WORKSPACE, 'skills/mindgraph/SCHEMA.md');
-const EXTRACTED_DIR      = path.join(WORKSPACE, 'skills/mindgraph/extracted');
+const SCHEMA_PATH        = path.join(__dirname, 'SCHEMA.md');
+const EXTRACTED_DIR      = path.join(__dirname, 'extracted');
 const OC_CONFIG          = path.join(process.env.HOME, '.openclaw/openclaw.json');
 
 const LARGE_FILE_THRESHOLD  = 20 * 1024;  // 20 KB  → switch to Pro model
@@ -149,40 +148,147 @@ async function summarize(content, config) {
 
 // ─── Known entities for canonical label reuse ─────────────────────────────────
 
-const KNOWN_ENTITIES = `## KNOWN ENTITIES — reuse these EXACT labels when the concept appears
+const STATIC_KNOWN_ENTITIES = `People/Orgs: Shan Rizvi
+Goals: Income Generation`;
 
-People/Orgs: Shan Rizvi, Thumos, BCG X, Hippocratic AI, ElevenLabs, Hunter.io, Firecrawl
-Projects: Thumos Care, 32B Scientific Reasoning Engine, Elys Live, UN Diplomatic Knowledge Graph,
-  MCP Neo4j Server, MatSyn, Pencil News, Just Ads, Polymarket Trading System, X Listening System,
-  MindGraph Memory System, Job Search Feb 2026
-Goals: Income Generation
+/**
+ * Fetch live entities, projects, and goals from the graph to build the KNOWN_ENTITIES block.
+ * Falls back to static list if graph is unavailable.
+ */
+async function buildKnownEntities() {
+  try {
+    const mg = require('./mindgraph-client.js');
+    
+    const [entities, projects, goals] = await Promise.all([
+      mg.getNodes({ nodeType: 'Entity', limit: 50 }).then(r => (r.items || r || []).filter(n => !n.tombstone_at)),
+      mg.getNodes({ nodeType: 'Project', limit: 20 }).then(r => (r.items || r || []).filter(n => !n.tombstone_at)),
+      mg.getNodes({ nodeType: 'Goal', limit: 10 }).then(r => (r.items || r || []).filter(n => !n.tombstone_at)),
+    ]);
 
-Use EXACT labels above. Do NOT create variants.`;
+    const entityLabels = entities.map(n => n.label).sort().join(', ');
+    const projectLabels = projects.map(n => n.label).sort().join(', ');
+    const goalLabels = goals.map(n => n.label).sort().join(', ');
+
+    const parts = [];
+    if (entityLabels) parts.push(`People/Orgs: ${entityLabels}`);
+    if (projectLabels) parts.push(`Projects: ${projectLabels}`);
+    if (goalLabels) parts.push(`Goals: ${goalLabels}`);
+
+    if (parts.length === 0) return STATIC_KNOWN_ENTITIES;
+    return parts.join('\n');
+  } catch (e) {
+    console.error(`  → Could not fetch live entities from graph: ${e.message}. Using static list.`);
+    return STATIC_KNOWN_ENTITIES;
+  }
+}
 
 // ─── Extraction prompt ────────────────────────────────────────────────────────
 
-function buildPrompt(schema, fileContent) {
+function buildPrompt(schema, fileContent, knownEntities) {
   return `You are a knowledge graph extraction agent. Extract structured knowledge from the content below.
 
 ## SCHEMA — use ONLY the types defined here
 ${schema}
 
-${KNOWN_ENTITIES}
+## KNOWN ENTITIES — reuse these EXACT labels when the concept appears
+${knownEntities}
+
+Use EXACT labels above. Do NOT create variants.
+
+## TYPE SELECTION GUIDE
+
+### Reality layer — use for raw facts and events
+- \`Observation\` — something that HAPPENED or was REPORTED at a specific time ("IDF struck Tehran", "Tim Cook said X at WWDC"). Has \`observed_at\` timestamp in props.
+- \`Entity\` — a named person, organization, product, or tool. Use for people and orgs mentioned by name.
+- \`Snippet\` — a quoted passage worth preserving verbatim. Rare — only for exact quotes with evidential value.
+- \`Source\` — DO NOT CREATE. File/session references have no graph value.
+
+### Epistemic layer — use for reasoning, beliefs, patterns
+- \`Claim\` — a currently-held belief or factual assertion that may change ("Iran regime at 33%", "Tim Cook is overpriced"). Has \`truth_status\` and \`certainty_degree\` in props.
+- \`Evidence\` — a specific data point or measurement that SUPPORTS or REFUTES a Claim. Use with SUPPORTS/REFUTES edges. Has \`quantitative_value\` prop.
+- \`Warrant\` — a reasoning principle connecting evidence to a claim ("Historical precedent: IRGC controls succession"). Part of an Argument bundle.
+- \`Argument\` — a full reasoning chain (claim + evidence + warrant). Use for structured analytical arguments.
+- \`Hypothesis\` — an unconfirmed proposed explanation ("may", "could", "possibly"). Has \`status: open\` prop.
+- \`Anomaly\` — a surprising finding or contradiction ("Bug: propsPatch silently ignored"). Has \`severity\` prop.
+- \`Pattern\` — a generalizable lesson learned ("Axum 0.8 uses {param} syntax, not :param"). Key prop: \`summary\` is the lesson itself.
+- \`Concept\` — an abstract idea being defined ("Peace Architecture", "Deep Psychological Profiling").
+- \`Mechanism\` — a causal or functional process ("Heartbeat watchdog restarts server on PID death").
+- \`Model\` — an ML model or computational model ("Gemini 3 Flash", "Kimi K2.5"). NOT a general concept.
+- \`Question\` — an open question needing resolution. Has \`status: open\` prop.
+- \`Constraint\` → see Intent layer below (also epistemic in nature but lives in intent layer).
+
+### Intent layer — use for decisions, constraints, commitments
+- \`Decision\` — a made choice with rationale ("Use Gemini Flash for briefings"). Key props: \`question\`, \`decision_rationale\`, \`reversibility\`. NOT for facts — for deliberate choices.
+- \`Constraint\` — a binding must/must-not rule ("Never give salary preemptively", "No EHR integration"). Has \`hard: true\` for non-negotiable rules.
+- \`Milestone\` — a specific deliverable within a known Project ("mindgraph-rs v0.6.1 Release").
+- \`Option\` — an alternative considered in a Decision (use only within Decision context, rarely standalone).
+- \`Goal\` — NEVER create. See Rules 10 below.
+- \`Project\` — NEVER create unless explicitly requested. See Rule 11 below.
+
+### Action layer — use for workflows and agent actions
+- \`Flow\` — a multi-step process or workflow ("Job Application Workflow", "X Listening Workflow"). Has \`step_count\` prop.
+- \`FlowStep\` — a single step within a Flow. Has \`order\` prop.
+- \`Affordance\` — a specific executable action available to the agent ("xapi post reply", "Telegram Card Delivery"). Has \`risk_level\` and \`reversible\` props.
+- \`Execution\` — a record of an agent action that actually ran ("Dreaming Pipeline Verification", "Cron Schedule Update"). Use for past completed actions.
+- \`RiskAssessment\` — an evaluation of risk. Use sparingly, only when risk was explicitly assessed.
+
+### Memory layer — use for meta/behavioral rules
+- \`Preference\` — how Shan wants things done ("Concrete Before Abstract", "Coworker Vibe"). Has \`key\` and \`value\` props.
+- \`MemoryPolicy\` — a rule governing Jaadu's behavior ("No Internal Narration", "Anti-Compaction Strategy"). Has \`policy_text\` prop.
+- \`Session\` — a conversation session node. The import script creates these automatically — do NOT extract.
+- \`Trace\` — a log of a specific agent action within a session. Extract only for significant auditable agent actions.
+- \`Journal\` — narrative reasoning prose. Use for debugging arcs, investigation notes, multi-step reasoning chains.
+
+### Agent layer — use for tasks and plans
+- \`Task\` — see Rule 12 below (strict). Has \`status: pending\` and \`priority\` props.
+- \`Plan\` — a proposed sequence of steps. Rare — only when a full multi-step plan was explicitly described.
+- \`Policy\` — an agent behavioral policy with explicit rules (distinct from MemoryPolicy — use for operational rules like "Fallback Chain", "Salary Negotiation Rule").
+
+## EDGE SELECTION GUIDE
+
+Choose the most semantically precise edge. RELEVANT_TO is a last resort.
+
+| Situation | Correct edge |
+|-----------|-------------|
+| Evidence backs a Claim | SUPPORTS (Evidence → Claim) |
+| Evidence contradicts a Claim | REFUTES (Evidence → Claim) |
+| Two Claims oppose each other | CONTRADICTS |
+| Decision serves a Goal | MOTIVATED_BY (Decision → Goal) |
+| Decision chose an Option | DECIDED_ON (Decision → Option) |
+| Node is limited by a Constraint | CONSTRAINED_BY |
+| Project breaks into Milestones | DECOMPOSES_INTO |
+| Claim B builds on Claim A | EXTENDS (B → A) |
+| Argument justifies a Claim | JUSTIFIES (Argument → Claim) |
+| Claim addresses a Question | ADDRESSES (Claim → Question) |
+| One event followed another | FOLLOWS |
+| Work belongs to a person/org | AUTHORED_BY |
+| Sub-component belongs to whole | PART_OF |
 
 ## OUTPUT RULES
-1. Use the MOST SPECIFIC type the schema provides.
+1. Use the TYPE SELECTION GUIDE above, not just "most specific."
 2. Every node MUST have a non-empty \`summary\` field (max 300 chars).
 3. Edge \`from\` and \`to\` values are node LABELS (not UIDs).
-4. Edge types use SCREAMING_SNAKE_CASE (AUTHORED_BY, CONSTRAINED_BY, MOTIVATED_BY, etc.).
+4. Edge types use SCREAMING_SNAKE_CASE.
 5. Do NOT create DERIVED_FROM or PART_OF edges — the import script handles provenance.
-6. RELEVANT_TO is last resort — prefer semantic edges (SUPPORTS, EXTENDS, ADDRESSES, etc.).
+6. RELEVANT_TO is last resort — only when no edge in the EDGE GUIDE applies.
 7. Output valid JSON only — no markdown, no explanation.
-8. Do NOT create Source nodes — file references and session logs have no graph value.
+8. Do NOT create Source or Session nodes — handled automatically.
 9. LABEL RULES (critical):
    - Labels must be SHORT and NOUN-PHRASE style: max 60 characters.
-   - Labels identify the thing, not describe it. "MindGraph Port Decision" not "Decision MindGraph UI Port 8766. Status made. Rationale Fixed at 8766..."
-   - All descriptive content goes in \`summary\` or \`props.description\`, never in the label.
+   - Labels identify the thing, not describe it. "MindGraph Port Decision" not "Decision MindGraph UI Port 8766. Status made..."
+   - All descriptive content goes in \`summary\` or \`props\`, never in the label.
    - Labels should be reusable as graph node names — imagine them as Wikipedia article titles.
+10. GOAL rules (CRITICAL):
+   - NEVER create a Goal node. Goals are owned by the human and managed manually.
+   - If a goal is mentioned, reference it by label in edges only (e.g. MOTIVATED_BY → "Income Generation").
+   - Exception: only if the human explicitly says "add this as a goal."
+11. PROJECT rules (CRITICAL):
+   - NEVER create a new Project node unless the human explicitly says "start a new project."
+   - Reference existing projects in edges only. Known projects are listed in the KNOWN ENTITIES section above.
+12. TASK rules (CRITICAL):
+   - Only create a Task for a CONCRETE, SPECIFIC, ONE-TIME action explicitly agreed upon (e.g. "send the email", "fix the bug in X").
+   - NEVER create Tasks for: recurring ops (crons, briefings), vague intentions, or things already completed.
+   - A Task must be completable and archivable. If unsure, use Observation instead.
 
 ## OUTPUT FORMAT
 { "nodes": [{ "label": "...", "type": "...", "summary": "...", "props": {} }], "edges": [{ "from": "...", "to": "...", "type": "..." }] }
@@ -229,6 +335,9 @@ async function main() {
 
   console.error(`Extracting [${model}] (${Math.round(fileSize / 1024)}KB): ${path.basename(filePath)}`);
 
+  // ── Stage 0: Fetch live entities from graph for canonical label reuse ──
+  const knownEntities = await buildKnownEntities();
+
   // ── Stage 1: Summarize if too large ──
   let summarized = false;
   if (fileSize > sumThreshold) {
@@ -239,7 +348,7 @@ async function main() {
   // ── Stage 2: Extract structured nodes ──
   const extracted = await callLLM(model, config, [
     { role: 'system', content: 'You are a knowledge graph extraction agent. Output valid JSON only.' },
-    { role: 'user',   content: buildPrompt(schema, fileContent) },
+    { role: 'user',   content: buildPrompt(schema, fileContent, knownEntities) },
   ]);
 
   // ── Stage 3: Entity Resolution ───────────────────────────────────────────────
@@ -261,7 +370,7 @@ async function main() {
         // Found existing entity — store mapping for edge updates
         const normalized = normalizeLabel(node.label);
         try {
-          const mg = require('/home/node/.openclaw/workspace/mindgraph-client.js');
+          const mg = require('./mindgraph-client.js');
           const graphNode = await mg.getNode(resolvedUid);
           if (graphNode && graphNode.label && graphNode.label !== node.label) {
             console.error(`  ENTITY-RESOLVE: "${node.label}" → "${graphNode.label}"`);

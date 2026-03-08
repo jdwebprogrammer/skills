@@ -27,7 +27,11 @@ const CONFIG = loadConfig();
 
 // ─── HTTP helper ─────────────────────────────────────────────────────────────
 
-async function request(method, path, body = null) {
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 500;
+const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+
+async function request(method, reqPath, body = null) {
   const { default: fetch } = await import('node-fetch').catch(() => {
     return { default: globalThis.fetch };
   });
@@ -40,21 +44,41 @@ async function request(method, path, body = null) {
   const opts = { method, headers };
   if (body !== null) opts.body = JSON.stringify(body);
 
-  const res = await fetch(`${CONFIG.baseUrl}${path}`, opts);
-  const text = await res.text();
+  let lastError;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(`${CONFIG.baseUrl}${reqPath}`, opts);
+      const text = await res.text();
 
-  if (!res.ok) {
-    let errBody = text;
-    try { errBody = JSON.parse(text); } catch {}
-    const msg = errBody.message || errBody.error || text;
-    const error = new Error(`mindgraph ${method} ${path} → ${res.status}: ${msg}`);
-    error.status = res.status;
-    error.details = errBody;
-    throw error;
+      if (!res.ok) {
+        // Retry on transient server errors
+        if (RETRYABLE_STATUSES.has(res.status) && attempt < MAX_RETRIES) {
+          lastError = new Error(`mindgraph ${method} ${reqPath} → ${res.status}`);
+          await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
+          continue;
+        }
+        let errBody = text;
+        try { errBody = JSON.parse(text); } catch {}
+        const msg = errBody.message || errBody.error || text;
+        const error = new Error(`mindgraph ${method} ${reqPath} → ${res.status}: ${msg}`);
+        error.status = res.status;
+        error.details = errBody;
+        throw error;
+      }
+
+      if (!text || text === 'null') return null;
+      try { return JSON.parse(text); } catch { return text; }
+    } catch (e) {
+      // Retry on network errors (ECONNRESET, ECONNREFUSED, etc.)
+      if (e.code && ['ECONNRESET', 'ECONNREFUSED', 'EPIPE', 'ETIMEDOUT'].includes(e.code) && attempt < MAX_RETRIES) {
+        lastError = e;
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
+        continue;
+      }
+      throw e;
+    }
   }
-
-  if (!text || text === 'null') return null;
-  try { return JSON.parse(text); } catch { return text; }
+  throw lastError;
 }
 
 /**
@@ -88,6 +112,7 @@ async function ingest(label, content, action = 'observation', opts = {}) {
     timestamp: opts.timestamp,
     confidence: opts.confidence,
     salience: opts.salience,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -96,15 +121,19 @@ async function ingest(label, content, action = 'observation', opts = {}) {
 
 async function manageEntity(opts = {}) {
   return request('POST', '/reality/entity', {
-    action: opts.action, // 'create', 'alias', 'resolve', 'fuzzy_resolve', 'merge'
+    action: opts.action, // 'create', 'alias', 'resolve', 'fuzzy_resolve', 'merge', 'relate'
     label: opts.label ? sanitizeLabel(opts.label) : undefined,
-    entity_type: opts.entityType,
     text: opts.text,
     canonical_uid: opts.canonicalUid,
     alias_score: opts.aliasScore,
     keep_uid: opts.keepUid,
     merge_uid: opts.mergeUid,
     limit: opts.limit,
+    source_uid: opts.sourceUid,
+    target_uid: opts.targetUid,
+    edge_type: opts.edgeType,
+    // entity_type must live inside props (server reads it from props.entity_type for dedup)
+    props: opts.entityType ? { entity_type: opts.entityType, ...opts.props } : opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -120,6 +149,7 @@ async function addArgument(opts = {}) {
     refutes_uid: opts.refutesUid,
     extends_uid: opts.extendsUid,
     source_uids: opts.sourceUids,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -138,6 +168,7 @@ async function addInquiry(label, content, action, opts = {}) {
     addresses_uid: opts.addressesUid,
     confidence: opts.confidence,
     salience: opts.salience,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -158,6 +189,7 @@ async function addStructure(label, content, action, opts = {}) {
     derived_from_uid: opts.derivedFromUid,
     proven_by_uid: opts.provenByUid,
     confidence: opts.confidence,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -174,6 +206,7 @@ async function addCommitment(label, description, action, opts = {}) {
     parent_uid: opts.parentUid,
     due_date: opts.dueDate,
     motivated_by_uid: opts.motivatedByUid,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -191,6 +224,7 @@ async function deliberate(opts = {}) {
     constraint_type: opts.constraintType,
     blocks_uid: opts.blocksUid,
     informs_uid: opts.informsUid,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -209,6 +243,7 @@ async function procedure(opts = {}) {
     control_type: opts.controlType,
     uses_affordance_uids: opts.usesAffordanceUids,
     goal_uid: opts.goalUid,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -226,6 +261,7 @@ async function risk(opts = {}) {
     mitigations: opts.mitigations,
     residual_risk: opts.residualRisk,
     filter_uid: opts.filterUid,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -234,13 +270,14 @@ async function risk(opts = {}) {
 
 async function sessionOp(opts = {}) {
   return request('POST', '/memory/session', {
-    action: opts.action, // 'open', 'trace', 'close'
+    action: opts.action, // 'open', 'trace', 'close', 'journal'
     label: opts.label ? sanitizeLabel(opts.label) : undefined,
-    focus: opts.focus,
+    summary: opts.summary,
     session_uid: opts.sessionUid,
-    trace_content: opts.traceContent,
-    trace_type: opts.traceType,
     relevant_node_uids: opts.relevantNodeUids,
+    confidence: opts.confidence,
+    salience: opts.salience,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -254,6 +291,7 @@ async function distill(label, content, opts = {}) {
     session_uid: opts.sessionUid,
     summarizes_uids: opts.summarizesUids,
     importance: opts.importance,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -271,6 +309,7 @@ async function memoryConfig(opts = {}) {
     applies_to_layers: opts.appliesToLayers,
     decay_half_life: opts.decayHalfLife,
     privacy_default: opts.privacyDefault,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -278,8 +317,15 @@ async function memoryConfig(opts = {}) {
 // ─── 13. Agent Layer (Plan) ──────────────────────────────────────────────────
 
 async function plan(opts = {}) {
+  // Field mapping by action:
+  //   create_task  → label, description, goalUid, relatedUids, status, props
+  //   create_plan  → label, description, taskUid, goalUid, props
+  //   add_step     → label, planUid, stepOrder, dependsOnUids, props
+  //   update_status → targetUid (the task/plan uid), status ('pending'|'in_progress'|'completed'|'cancelled')
+  //                   NOTE: use targetUid, NOT taskUid, for update_status
+  //   get_plan     → targetUid (the task uid to fetch plan for)
   return request('POST', '/agent/plan', {
-    action: opts.action, // 'create_task', 'create_plan', 'add_step', 'update_status', 'get_plan'
+    action: opts.action,
     label: opts.label ? sanitizeLabel(opts.label) : undefined,
     description: opts.description,
     goal_uid: opts.goalUid,
@@ -287,8 +333,10 @@ async function plan(opts = {}) {
     plan_uid: opts.planUid,
     step_order: opts.stepOrder,
     depends_on_uids: opts.dependsOnUids,
-    target_uid: opts.targetUid,
+    // targetUid is used by update_status and get_plan — taskUid is a common mistake, support both
+    target_uid: opts.targetUid || (opts.action === 'update_status' || opts.action === 'get_plan' ? opts.taskUid : undefined),
     status: opts.status,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -309,6 +357,7 @@ async function governance(opts = {}) {
     approved: opts.approved,
     resolution_note: opts.resolutionNote,
     requires_plan_uid: opts.requiresPlanUid,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -328,6 +377,7 @@ async function execution(opts = {}) {
     agent_name: opts.agentName,
     agent_role: opts.agentRole,
     filter_plan_uid: opts.filterPlanUid,
+    props: opts.props,
     agent_id: opts.agentId || CONFIG.defaultAgent,
   });
 }
@@ -488,14 +538,14 @@ async function getNodes(opts = {}) {
 // ─── Journal (Phase 0.5.6) ────────────────────────────────────────────────────
 
 async function addJournal(label, content, opts = {}) {
-  return request('POST', '/node', {
+  return request('POST', '/memory/session', {
+    action: 'journal',
     label: sanitizeLabel(label),
-    node_type: 'Journal',
     summary: opts.summary || content.slice(0, 300),
+    session_uid: opts.sessionUid,
+    relevant_node_uids: opts.relevantNodeUids,
     props: {
-      _type: 'Journal',
       content,
-      session_uid: opts.sessionUid || null,
       journal_type: opts.journalType || 'note',
       tags: opts.tags || [],
     },
@@ -512,9 +562,15 @@ async function addJournal(label, content, opts = {}) {
  * Returns a 1536-dim vector.
  */
 async function embedQuery(text) {
-  const ocConfig = JSON.parse(fs.readFileSync(path.join(process.env.HOME, '.openclaw', 'openclaw.json'), 'utf8'));
-  const apiKey = ocConfig.env?.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY not found');
+  // Try env var first; fall back to OpenClaw config for local installs
+  let apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    try {
+      const ocConfig = JSON.parse(fs.readFileSync(path.join(process.env.HOME, '.openclaw', 'openclaw.json'), 'utf8'));
+      apiKey = ocConfig.env?.OPENAI_API_KEY;
+    } catch {}
+  }
+  if (!apiKey) throw new Error('OPENAI_API_KEY not found — set the OPENAI_API_KEY environment variable');
 
   const { default: fetch } = await import('node-fetch').catch(() => ({ default: globalThis.fetch }));
   const res = await fetch('https://api.openai.com/v1/embeddings', {

@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
-const mg = require('../../../mindgraph-client.js');
+const mg = require('../mindgraph-client.js');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 

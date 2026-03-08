@@ -16,7 +16,7 @@
 'use strict';
 
 const https = require('https');
-const mg = require('../../../mindgraph-client.js');
+const mg = require('../mindgraph-client.js');
 
 const WORKSPACE = '/home/node/.openclaw/workspace';
 const OC_CONFIG = require('path').join(process.env.HOME, '.openclaw/openclaw.json');

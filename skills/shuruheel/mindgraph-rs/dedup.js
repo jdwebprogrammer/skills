@@ -8,7 +8,7 @@
 
 'use strict';
 
-const mg = require('/home/node/.openclaw/workspace/mindgraph-client.js');
+const mg = require('./mindgraph-client.js');
 
 async function withRetry(fn, label, maxRetries = 3, delayMs = 500) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -39,14 +39,16 @@ async function main() {
 
   console.log(`Processing ${allNodes.length} nodes...`);
 
-  // Group by label
+  // Group by label + node_type — different types with the same label are intentional
+  // schema distinctions (e.g. Entity "Aaron Goh" vs Source "[Email] Aaron Goh") and
+  // must NOT be merged.
   const groups = new Map();
   for (const node of allNodes) {
     let labelText = node.label.toLowerCase().trim();
     if (node.node_type === 'Source') {
       labelText = labelText.replace(/^source[:\s]+/, '');
     }
-    const key = labelText;
+    const key = `${node.node_type}::${labelText}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(node);
   }

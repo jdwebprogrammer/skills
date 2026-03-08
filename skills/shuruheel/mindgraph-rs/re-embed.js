@@ -17,7 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const mg = require('/home/node/.openclaw/workspace/mindgraph-client.js');
+const mg = require('./mindgraph-client.js');
 
 function getOpenAIKey() {
   try {
@@ -59,14 +59,34 @@ async function putEmbedding(uid, vector) {
 async function buildEmbeddingText(node) {
   const parts = [node.label];
   
-  // Add summary/description
+  // Add summary (primary FTS field)
   if (node.summary) parts.push(node.summary);
-  if (node.props?.description) parts.push(node.props.description);
-  if (node.props?.content) parts.push(node.props.content);
-  if (node.props?.decision_rationale) parts.push(node.props.decision_rationale);
-  if (node.props?.question) parts.push(node.props.question);
-  if (node.props?.policy_text) parts.push(node.props.policy_text);
-  
+
+  // Add all semantically meaningful props — aligned with FTS indexed fields
+  const p = node.props || {};
+  // Narrative / descriptive
+  if (p.description)          parts.push(p.description);
+  if (p.content)              parts.push(p.content);
+  // Decision nodes
+  if (p.decision_rationale)   parts.push(p.decision_rationale);
+  if (p.question)             parts.push(p.question);
+  // Constraint / policy nodes
+  if (p.policy_text)          parts.push(p.policy_text);
+  if (p.policyContent)        parts.push(p.policyContent);
+  // Argument / epistemic nodes
+  if (p.claim_text)           parts.push(p.claim_text);
+  if (p.evidence)             parts.push(typeof p.evidence === 'string' ? p.evidence : JSON.stringify(p.evidence));
+  if (p.warrant)              parts.push(typeof p.warrant === 'string' ? p.warrant : JSON.stringify(p.warrant));
+  if (p.rebuttal)             parts.push(p.rebuttal);
+  // Task / goal nodes
+  if (p.task_description)     parts.push(p.task_description);
+  if (p.outcome)              parts.push(p.outcome);
+  if (p.focus)                parts.push(p.focus);
+  // Entity / observation nodes
+  if (p.bio)                  parts.push(p.bio);
+  if (p.notes)                parts.push(p.notes);
+  if (p.text)                 parts.push(p.text);
+
   // Add type context
   parts.push(`Type: ${node.node_type}`);
   

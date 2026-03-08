@@ -15,7 +15,7 @@
 
 const https = require('https');
 const path = require('path');
-const mg = require('../../../mindgraph-client.js');
+const mg = require('../mindgraph-client.js');
 
 const OC_CONFIG = path.join(process.env.HOME, '.openclaw/openclaw.json');
 const MAX_PER_SESSION = 15; // LLM calls are slow — keep nightly batch small

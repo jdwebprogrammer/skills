@@ -12,7 +12,7 @@
 
 'use strict';
 
-const mg = require('/home/node/.openclaw/workspace/mindgraph-client.js');
+const mg = require('./mindgraph-client.js');
 
 // Cache for resolved entities in this session
 const resolutionCache = new Map();

@@ -6,7 +6,7 @@
  */
 'use strict';
 
-const mg = require('/home/node/.openclaw/workspace/mindgraph-client.js');
+const mg = require('./mindgraph-client.js');
 
 async function main() {
   console.log('Fetching all nodes...');

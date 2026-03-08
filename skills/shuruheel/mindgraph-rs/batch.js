@@ -7,7 +7,7 @@
  * Updated to use the 18 Cognitive Layer Tools API.
  */
 
-const mg = require('../../mindgraph-client.js');
+const mg = require('./mindgraph-client.js');
 
 async function run() {
     const input = process.argv[2];

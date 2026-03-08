@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # gotchi-equip: Equip wearables on an Aavegotchi
@@ -7,120 +7,125 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
 
-# Validate inputs
-if [ $# -lt 2 ]; then
-    echo "❌ Usage: equip.sh <gotchi-id> <slot=wearableId> [slot2=wearableId2] ..."
-    echo ""
-    echo "Valid slots: body, face, eyes, head, left-hand, right-hand, pet, background"
-    echo ""
-    echo "Example:"
-    echo "  equip.sh 9638 right-hand=64"
-    echo "  equip.sh 9638 head=90 pet=151 right-hand=64"
-    exit 1
+usage() {
+  cat <<USAGE
+Usage: ./scripts/equip.sh <gotchi-id> <slot=wearableId> [slot2=wearableId2] ...
+
+Valid slots: body, face, eyes, head, left-hand, right-hand, pet, background
+
+Examples:
+  ./scripts/equip.sh 9638 right-hand=64
+  ./scripts/equip.sh 9638 head=90 pet=151 right-hand=64
+USAGE
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+  usage
+  exit 0
 fi
+
+if [ "$#" -lt 2 ]; then
+  usage
+  exit 1
+fi
+
+require_bin node
+require_bin jq
+require_bin curl
 
 GOTCHI_ID="$1"
 shift
+validate_gotchi_id "$GOTCHI_ID"
 
-# Build wearables JSON object
-WEARABLES_JSON="{"
-FIRST=true
+# Build wearables JSON object safely
+WEARABLES_JSON='{}'
 for arg in "$@"; do
-    if [[ ! "$arg" =~ ^([a-z-]+)=([0-9]+)$ ]]; then
-        echo "❌ Invalid format: $arg"
-        echo "   Expected: slot=wearableId (e.g., right-hand=64)"
-        exit 1
-    fi
-    
-    SLOT="${BASH_REMATCH[1]}"
-    WEARABLE_ID="${BASH_REMATCH[2]}"
-    
-    if [ "$FIRST" = true ]; then
-        FIRST=false
-    else
-        WEARABLES_JSON+=","
-    fi
-    
-    WEARABLES_JSON+="\"$SLOT\":$WEARABLE_ID"
+  if [[ ! "$arg" =~ ^([a-z-]+)=([0-9]+)$ ]]; then
+    echo "Invalid format: $arg"
+    echo "Expected: slot=wearableId (e.g., right-hand=64)"
+    exit 1
+  fi
+
+  SLOT="${BASH_REMATCH[1]}"
+  WEARABLE_ID="${BASH_REMATCH[2]}"
+
+  WEARABLES_JSON="$(echo "$WEARABLES_JSON" | jq -c --arg slot "$SLOT" --argjson id "$WEARABLE_ID" '. + {($slot): $id}')"
 done
-WEARABLES_JSON+="}"
 
-echo "👻 Equipping Wearables on Gotchi #$GOTCHI_ID"
-echo ""
-echo "==================================================================="
-echo "Gotchi ID: $GOTCHI_ID"
-echo "Wearables: $WEARABLES_JSON"
-echo "==================================================================="
-echo ""
+# Preserve existing loadout: fetch current 16-slot wearables first.
+CURRENT_WEARABLES_JSON="$(fetch_current_wearables "$GOTCHI_ID")"
 
-# Create temp Node.js script
-TEMP_SCRIPT=$(mktemp)
-trap "rm -f $TEMP_SCRIPT" EXIT
+echo "Gotchi: #$GOTCHI_ID"
+echo "Requested updates: $WEARABLES_JSON"
+echo
 
-cat > "$TEMP_SCRIPT" << EOF
-const { buildEquipTransaction } = require('$SKILL_DIR/lib/equip-lib.js');
+TEMP_SCRIPT="$(mktemp /tmp/gotchi-equip-script-XXXXXX.js)"
+TEMP_TX="$(mktemp /tmp/gotchi-equip-tx-XXXXXX.json)"
+cleanup() {
+  rm -f "$TEMP_SCRIPT" "$TEMP_TX"
+}
+trap cleanup EXIT
+
+cat > "$TEMP_SCRIPT" <<'NODE_EOF'
+const { buildEquipTransaction } = require(process.argv[2]);
 const fs = require('fs');
 
-const gotchiId = $GOTCHI_ID;
-const wearables = $WEARABLES_JSON;
+const gotchiId = process.argv[3];
+const wearables = JSON.parse(process.argv[4]);
+const currentWearables = JSON.parse(process.argv[5]);
+const outFile = process.argv[6];
 
 try {
-    const txData = buildEquipTransaction(gotchiId, wearables);
-    
-    console.log('📋 Transaction prepared:');
-    console.log('   To:', txData.transaction.to);
-    console.log('   Chain:', txData.transaction.chainId);
-    console.log('   Description:', txData.description);
-    console.log('');
-    
-    // Save for Bankr submission
-    const outFile = '$SKILL_DIR/equip-tx.json';
-    fs.writeFileSync(outFile, JSON.stringify(txData, null, 2));
-    console.log('💾 Saved transaction to:', outFile);
-    console.log('');
+  const txData = buildEquipTransaction(gotchiId, wearables, currentWearables);
+
+  console.log('Transaction prepared:');
+  console.log('  To:', txData.transaction.to);
+  console.log('  Chain:', txData.transaction.chainId);
+  console.log('  Description:', txData.description);
+  console.log('');
+
+  fs.writeFileSync(outFile, JSON.stringify(txData, null, 2));
+  console.log('Saved transaction payload to temp file');
 } catch (error) {
-    console.error('❌ Error:', error.message);
-    process.exit(1);
+  console.error('Error:', error.message);
+  process.exit(1);
 }
-EOF
+NODE_EOF
 
-# Run the script
 cd "$SKILL_DIR"
-node "$TEMP_SCRIPT"
+node "$TEMP_SCRIPT" "$SKILL_DIR/lib/equip-lib.js" "$GOTCHI_ID" "$WEARABLES_JSON" "$CURRENT_WEARABLES_JSON" "$TEMP_TX"
 
-# Submit via Bankr
-echo "🚀 Submitting transaction via Bankr..."
-echo ""
+echo "Submitting transaction via Bankr..."
+API_KEY="$(resolve_bankr_api_key)"
 
-BANKR_CONFIG="$HOME/.openclaw/skills/bankr/config.json"
-if [ ! -f "$BANKR_CONFIG" ]; then
-    echo "❌ Bankr config not found: $BANKR_CONFIG"
-    exit 1
+RESPONSE="$(curl -sS -X POST "https://api.bankr.bot/agent/submit" \
+  -H "X-API-Key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @"$TEMP_TX")"
+
+if ! echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
+  echo "Non-JSON response from Bankr:"
+  echo "$RESPONSE"
+  exit 1
 fi
-
-API_KEY=$(jq -r '.apiKey' "$BANKR_CONFIG")
-
-RESPONSE=$(curl -s -X POST "https://api.bankr.bot/agent/submit" \
-    -H "X-API-Key: $API_KEY" \
-    -H "Content-Type: application/json" \
-    -d @equip-tx.json)
 
 echo "$RESPONSE" | jq '.'
 
-# Check success
-SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+SUCCESS="$(echo "$RESPONSE" | jq -r '.success // false')"
 if [ "$SUCCESS" = "true" ]; then
-    TX_HASH=$(echo "$RESPONSE" | jq -r '.transactionHash')
-    echo ""
-    echo "==================================================================="
-    echo "🎉 SUCCESS! Wearables equipped!"
-    echo "==================================================================="
+  TX_HASH="$(echo "$RESPONSE" | jq -r '.transactionHash // empty')"
+  echo
+  echo "SUCCESS: wearables equipped"
+  if [ -n "$TX_HASH" ]; then
     echo "Transaction: $TX_HASH"
-    echo "View on BaseScan: https://basescan.org/tx/$TX_HASH"
-    echo ""
+    echo "BaseScan: https://basescan.org/tx/$TX_HASH"
+  fi
 else
-    echo ""
-    echo "❌ Transaction failed!"
-    exit 1
+  ERR_MSG="$(echo "$RESPONSE" | jq -r '.error // .message // "Transaction failed"')"
+  echo
+  echo "Transaction failed: $ERR_MSG"
+  exit 1
 fi

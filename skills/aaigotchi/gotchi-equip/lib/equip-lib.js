@@ -2,19 +2,6 @@ const { encodeFunctionData } = require('viem');
 
 const DIAMOND_ADDRESS = '0xA99c4B08201F2913Db8D28e71d020c4298F29dBF';
 const CHAIN_ID = 8453; // Base mainnet
-
-// Slot position mapping
-const SLOTS = {
-  BODY: 0,
-  FACE: 1,
-  EYES: 2,
-  HEAD: 3,
-  LEFT_HAND: 4,
-  RIGHT_HAND: 5,
-  PET: 6,
-  BACKGROUND: 7
-};
-
 const SLOT_NAMES = ['body', 'face', 'eyes', 'head', 'left-hand', 'right-hand', 'pet', 'background'];
 
 // ABI for equipWearables
@@ -29,31 +16,77 @@ const EQUIP_ABI = {
   outputs: []
 };
 
+function normalizeGotchiId(gotchiId) {
+  const idStr = String(gotchiId);
+  if (!/^\d+$/.test(idStr)) {
+    throw new Error(`Invalid gotchi ID: ${gotchiId}`);
+  }
+  return BigInt(idStr);
+}
+
+function normalizeWearableId(value, slotName) {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id < 0 || id > 65535) {
+    throw new Error(`Invalid wearable ID for slot ${slotName}: ${value}`);
+  }
+  return id;
+}
+
+function normalizeCurrentWearables(currentWearables) {
+  if (currentWearables === null || currentWearables === undefined) {
+    return new Array(16).fill(0);
+  }
+
+  if (!Array.isArray(currentWearables)) {
+    throw new Error('Current wearables must be an array');
+  }
+
+  const base = currentWearables.slice(0, 16);
+  while (base.length < 16) {
+    base.push(0);
+  }
+
+  return base.map((value, index) => normalizeWearableId(value, `index-${index}`));
+}
+
 /**
- * Build equip transaction
- * @param {number} gotchiId - Gotchi token ID
- * @param {Object} wearables - Wearable configuration { slotName: wearableId }
+ * Build equip transaction.
+ *
+ * IMPORTANT:
+ * equipWearables expects the full 16-slot loadout. If currentWearables
+ * is provided, only specified slots are updated and all others are preserved.
+ *
+ * @param {number|string} gotchiId - Gotchi token ID
+ * @param {Object} wearables - Wearable updates { slotName: wearableId }
+ * @param {Array<number>} [currentWearables] - Existing 16-slot wearables array
  * @returns {Object} Transaction object for Bankr
  */
-function buildEquipTransaction(gotchiId, wearables) {
-  // Initialize empty slots (0 = unequip/no change based on current state)
-  const slots = new Array(16).fill(0);
-  
-  // Fill in wearables
-  for (const [slotName, wearableId] of Object.entries(wearables)) {
-    const slotIndex = SLOT_NAMES.indexOf(slotName.toLowerCase());
-    if (slotIndex === -1) {
-      throw new Error(`Invalid slot name: ${slotName}. Valid slots: ${SLOT_NAMES.join(', ')}`);
-    }
-    slots[slotIndex] = parseInt(wearableId);
+function buildEquipTransaction(gotchiId, wearables, currentWearables) {
+  const normalizedGotchiId = normalizeGotchiId(gotchiId);
+
+  if (!wearables || typeof wearables !== 'object' || Array.isArray(wearables)) {
+    throw new Error('Wearables must be an object: { slotName: wearableId }');
   }
-  
+
+  const slots = normalizeCurrentWearables(currentWearables);
+
+  for (const [slotNameRaw, wearableIdRaw] of Object.entries(wearables)) {
+    const slotName = String(slotNameRaw).toLowerCase();
+    const slotIndex = SLOT_NAMES.indexOf(slotName);
+
+    if (slotIndex === -1) {
+      throw new Error(`Invalid slot name: ${slotNameRaw}. Valid slots: ${SLOT_NAMES.join(', ')}`);
+    }
+
+    slots[slotIndex] = normalizeWearableId(wearableIdRaw, slotName);
+  }
+
   const calldata = encodeFunctionData({
     abi: [EQUIP_ABI],
     functionName: 'equipWearables',
-    args: [BigInt(gotchiId), slots]
+    args: [normalizedGotchiId, slots]
   });
-  
+
   return {
     transaction: {
       to: DIAMOND_ADDRESS,
@@ -68,19 +101,19 @@ function buildEquipTransaction(gotchiId, wearables) {
 
 /**
  * Build unequip-all transaction
- * @param {number} gotchiId - Gotchi token ID
+ * @param {number|string} gotchiId - Gotchi token ID
  * @returns {Object} Transaction object for Bankr
  */
 function buildUnequipAllTransaction(gotchiId) {
-  // All zeros = unequip everything
+  const normalizedGotchiId = normalizeGotchiId(gotchiId);
   const slots = new Array(16).fill(0);
-  
+
   const calldata = encodeFunctionData({
     abi: [EQUIP_ABI],
     functionName: 'equipWearables',
-    args: [BigInt(gotchiId), slots]
+    args: [normalizedGotchiId, slots]
   });
-  
+
   return {
     transaction: {
       to: DIAMOND_ADDRESS,
@@ -96,7 +129,6 @@ function buildUnequipAllTransaction(gotchiId) {
 module.exports = {
   DIAMOND_ADDRESS,
   CHAIN_ID,
-  SLOTS,
   SLOT_NAMES,
   buildEquipTransaction,
   buildUnequipAllTransaction

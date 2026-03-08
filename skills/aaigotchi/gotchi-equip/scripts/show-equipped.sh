@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # gotchi-equip: Show currently equipped wearables on an Aavegotchi
@@ -6,58 +6,61 @@ set -euo pipefail
 # Example: show-equipped.sh 9638
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILL_DIR="$(dirname "$SCRIPT_DIR")"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
 
-# Validate inputs
-if [ $# -ne 1 ]; then
-    echo "❌ Usage: show-equipped.sh <gotchi-id>"
-    echo ""
-    echo "Example:"
-    echo "  show-equipped.sh 9638"
-    exit 1
+usage() {
+  cat <<USAGE
+Usage: ./scripts/show-equipped.sh <gotchi-id>
+
+Example:
+  ./scripts/show-equipped.sh 9638
+USAGE
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+  usage
+  exit 0
 fi
+
+if [ "$#" -ne 1 ]; then
+  usage
+  exit 1
+fi
+
+require_bin jq
+require_bin curl
 
 GOTCHI_ID="$1"
+validate_gotchi_id "$GOTCHI_ID"
 
-echo "👻 Fetching Equipped Wearables for Gotchi #$GOTCHI_ID"
-echo ""
+echo "Fetching equipped wearables for gotchi #$GOTCHI_ID"
+echo
+
+GOTCHI_JSON="$(fetch_gotchi_subgraph_json "$GOTCHI_ID")"
+NAME="$(echo "$GOTCHI_JSON" | jq -r '.name // "Unknown"')"
+EQUIPPED="$(echo "$GOTCHI_JSON" | jq -c '(.equippedWearables // [])')"
+
 echo "==================================================================="
-
-# Query subgraph for equipped wearables
-SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmh3flagm0001r4p25foufjtt/subgraphs/aavegotchi-core-base/prod/gn"
-
-QUERY=$(cat <<EOF
-{
-  "query": "{ aavegotchi(id: \"$GOTCHI_ID\") { id name equippedWearables } }"
-}
-EOF
-)
-
-RESPONSE=$(curl -s "$SUBGRAPH_URL" -H 'content-type: application/json' --data "$QUERY")
-
-# Parse response
-NAME=$(echo "$RESPONSE" | jq -r '.data.aavegotchi.name // "Unknown"')
-EQUIPPED=$(echo "$RESPONSE" | jq -r '.data.aavegotchi.equippedWearables // []')
-
-if [ "$NAME" = "Unknown" ] || [ "$NAME" = "null" ]; then
-    echo "❌ Gotchi #$GOTCHI_ID not found"
-    exit 1
-fi
-
 echo "Gotchi: #$GOTCHI_ID \"$NAME\""
-echo ""
-echo "🎭 Equipped Wearables:"
-echo ""
+echo
+echo "Equipped wearables:"
+echo
 
-# Parse equipped wearables array
 SLOTS=("Body" "Face" "Eyes" "Head" "Left Hand" "Right Hand" "Pet" "Background")
+HAS_ANY=0
 
 for i in {0..7}; do
-    WEARABLE_ID=$(echo "$EQUIPPED" | jq -r ".[$i] // 0")
-    if [ "$WEARABLE_ID" != "0" ] && [ "$WEARABLE_ID" != "null" ]; then
-        echo "   ${SLOTS[$i]}: Wearable ID $WEARABLE_ID"
-    fi
+  WEARABLE_ID="$(echo "$EQUIPPED" | jq -r ".[$i] // 0")"
+  if [ "$WEARABLE_ID" != "0" ] && [ "$WEARABLE_ID" != "null" ]; then
+    HAS_ANY=1
+    echo "  ${SLOTS[$i]}: Wearable ID $WEARABLE_ID"
+  fi
 done
 
-echo ""
+if [ "$HAS_ANY" -eq 0 ]; then
+  echo "  (none equipped)"
+fi
+
+echo
 echo "==================================================================="

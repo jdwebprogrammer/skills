@@ -3,11 +3,16 @@
   "slug": "gotchi-equip",
   "displayName": "Gotchi Equip",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771522462959,
-    "commit": "https://github.com/openclaw/skills/commit/960c8f0f4ecf873fa18e1561f34f12eaaf964d71"
+    "version": "1.0.3",
+    "publishedAt": 1772826848767,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771522462959,
+      "commit": "https://github.com/openclaw/skills/commit/960c8f0f4ecf873fa18e1561f34f12eaaf964d71"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1771384935820,

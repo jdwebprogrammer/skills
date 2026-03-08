@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # gotchi-equip: Unequip all wearables from an Aavegotchi
@@ -7,92 +7,101 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
 
-# Validate inputs
-if [ $# -ne 1 ]; then
-    echo "❌ Usage: unequip-all.sh <gotchi-id>"
-    echo ""
-    echo "Example:"
-    echo "  unequip-all.sh 9638"
-    exit 1
+usage() {
+  cat <<USAGE
+Usage: ./scripts/unequip-all.sh <gotchi-id>
+
+Example:
+  ./scripts/unequip-all.sh 9638
+USAGE
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+  usage
+  exit 0
 fi
+
+if [ "$#" -ne 1 ]; then
+  usage
+  exit 1
+fi
+
+require_bin node
+require_bin jq
+require_bin curl
 
 GOTCHI_ID="$1"
+validate_gotchi_id "$GOTCHI_ID"
 
-echo "👻 Unequipping ALL Wearables from Gotchi #$GOTCHI_ID"
-echo ""
-echo "==================================================================="
-echo "Gotchi ID: $GOTCHI_ID"
-echo "Action: Remove all equipped wearables"
-echo "==================================================================="
-echo ""
+echo "Gotchi: #$GOTCHI_ID"
+echo "Action: Unequip all wearables"
+echo
 
-# Create temp Node.js script
-TEMP_SCRIPT=$(mktemp)
-trap "rm -f $TEMP_SCRIPT" EXIT
+TEMP_SCRIPT="$(mktemp /tmp/gotchi-unequip-script-XXXXXX.js)"
+TEMP_TX="$(mktemp /tmp/gotchi-unequip-tx-XXXXXX.json)"
+cleanup() {
+  rm -f "$TEMP_SCRIPT" "$TEMP_TX"
+}
+trap cleanup EXIT
 
-cat > "$TEMP_SCRIPT" << EOF
-const { buildUnequipAllTransaction } = require('$SKILL_DIR/lib/equip-lib.js');
+cat > "$TEMP_SCRIPT" <<'NODE_EOF'
+const { buildUnequipAllTransaction } = require(process.argv[2]);
 const fs = require('fs');
 
-const gotchiId = $GOTCHI_ID;
+const gotchiId = process.argv[3];
+const outFile = process.argv[4];
 
 try {
-    const txData = buildUnequipAllTransaction(gotchiId);
-    
-    console.log('📋 Transaction prepared:');
-    console.log('   To:', txData.transaction.to);
-    console.log('   Chain:', txData.transaction.chainId);
-    console.log('   Description:', txData.description);
-    console.log('');
-    
-    // Save for Bankr submission
-    const outFile = '$SKILL_DIR/unequip-tx.json';
-    fs.writeFileSync(outFile, JSON.stringify(txData, null, 2));
-    console.log('💾 Saved transaction to:', outFile);
-    console.log('');
+  const txData = buildUnequipAllTransaction(gotchiId);
+
+  console.log('Transaction prepared:');
+  console.log('  To:', txData.transaction.to);
+  console.log('  Chain:', txData.transaction.chainId);
+  console.log('  Description:', txData.description);
+  console.log('');
+
+  fs.writeFileSync(outFile, JSON.stringify(txData, null, 2));
+  console.log('Saved transaction payload to temp file');
 } catch (error) {
-    console.error('❌ Error:', error.message);
-    process.exit(1);
+  console.error('Error:', error.message);
+  process.exit(1);
 }
-EOF
+NODE_EOF
 
-# Run the script
 cd "$SKILL_DIR"
-node "$TEMP_SCRIPT"
+node "$TEMP_SCRIPT" "$SKILL_DIR/lib/equip-lib.js" "$GOTCHI_ID" "$TEMP_TX"
 
-# Submit via Bankr
-echo "🚀 Submitting transaction via Bankr..."
-echo ""
+echo "Submitting transaction via Bankr..."
+API_KEY="$(resolve_bankr_api_key)"
 
-BANKR_CONFIG="$HOME/.openclaw/skills/bankr/config.json"
-if [ ! -f "$BANKR_CONFIG" ]; then
-    echo "❌ Bankr config not found: $BANKR_CONFIG"
-    exit 1
+RESPONSE="$(curl -sS -X POST "https://api.bankr.bot/agent/submit" \
+  -H "X-API-Key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @"$TEMP_TX")"
+
+if ! echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
+  echo "Non-JSON response from Bankr:"
+  echo "$RESPONSE"
+  exit 1
 fi
-
-API_KEY=$(jq -r '.apiKey' "$BANKR_CONFIG")
-
-RESPONSE=$(curl -s -X POST "https://api.bankr.bot/agent/submit" \
-    -H "X-API-Key: $API_KEY" \
-    -H "Content-Type: application/json" \
-    -d @unequip-tx.json)
 
 echo "$RESPONSE" | jq '.'
 
-# Check success
-SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+SUCCESS="$(echo "$RESPONSE" | jq -r '.success // false')"
 if [ "$SUCCESS" = "true" ]; then
-    TX_HASH=$(echo "$RESPONSE" | jq -r '.transactionHash')
-    echo ""
-    echo "==================================================================="
-    echo "🎉 SUCCESS! All wearables unequipped!"
-    echo "==================================================================="
+  TX_HASH="$(echo "$RESPONSE" | jq -r '.transactionHash // empty')"
+  echo
+  echo "SUCCESS: all wearables unequipped"
+  if [ -n "$TX_HASH" ]; then
     echo "Transaction: $TX_HASH"
-    echo "View on BaseScan: https://basescan.org/tx/$TX_HASH"
-    echo ""
+    echo "BaseScan: https://basescan.org/tx/$TX_HASH"
+  fi
 else
-    echo ""
-    echo "❌ Transaction failed!"
-    exit 1
+  ERR_MSG="$(echo "$RESPONSE" | jq -r '.error // .message // "Transaction failed"')"
+  echo
+  echo "Transaction failed: $ERR_MSG"
+  exit 1
 fi

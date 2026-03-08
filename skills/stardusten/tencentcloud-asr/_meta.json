@@ -1,0 +1,11 @@
+{
+  "owner": "stardusten",
+  "slug": "tencentcloud-asr",
+  "displayName": "TencentCloud ASR",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772956823012,
+    "commit": null
+  },
+  "history": []
+}

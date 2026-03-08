@@ -8,7 +8,7 @@ allowed-tools:
   - Bash(npx hotfun *)
 license: MIT
 metadata:
-  {"author":"Hot.fun AI Skill","version":"1.0.0","openclaw":{"requires":{"env":["PRIVATE_KEY"]},"primaryEnv":"PRIVATE_KEY","optionalEnv":["SOLANA_RPC_URL","ROYALTY_PARTY"]}}
+  {"author":"Hot.fun AI Skill","version":"1.0.0","openclaw":{"requires":{"env":["PRIVATE_KEY"]},"primaryEnv":"PRIVATE_KEY","optionalEnv":["SOLANA_RPC_URL"]}}
 ---
 
 ## [Agent must follow] User agreement and security notice on first use
@@ -88,27 +88,27 @@ Before calling `create-token`, the Agent **must** ask the user for and confirm:
 
 | Info | Required | Description |
 |------|----------|-------------|
-| **Token name** (name) | Yes | Full token name |
-| **Token symbol** (symbol) | Yes | e.g. MTK, DOGE |
-| **URI** (uri) | Yes | Token metadata / image URL (e.g. IPFS link) |
-
-Optional env: `ROYALTY_PARTY` (royalty recipient address; defaults to system program = no royalty).
+| **Token name** (name) | Yes | Full token name, max 255 chars |
+| **Token symbol** (symbol) | Yes | e.g. MTK, DOGE, max 32 chars |
+| **Image URL** (image_url) | Yes | Token image URL (e.g. IPFS link) |
+| **Description** (description) | No | Token description |
+| **X Royalty Party** (x_royalty_party) | No | X (Twitter) username for royalty party |
 
 ### 2. Technical flow (done by create-token)
 
 After collecting the above, execute:
 
 ```bash
-hotfun create-token <name> <symbol> <uri>
+hotfun create-token <name> <symbol> <image_url> [--description "desc"] [--x-royalty-party "username"]
 ```
 
 Under the hood, the single command handles the full flow:
 
-1. **Call API** — POST to `https://gate.game.com/v3/hotfun/create_pool_with_config` with payer (from PRIVATE_KEY), name, symbol, uri. API returns a base58-encoded Solana transaction.
+1. **Call API** — POST (multipart/form-data) to `https://gate.game.com/v3/hotfun/agent/create_pool_with_config` with payer (from PRIVATE_KEY), name, symbol, image_url, agent_ts (current Unix timestamp), agent_sign (Ed25519 signature of agent_ts with private key, base58 encoded), and optional description / x_royalty_party. API returns a base58-encoded Solana transaction.
 2. **Sign** — Deserialize the transaction and sign it with the wallet private key.
 3. **Send** — Send the signed transaction to Solana RPC and confirm.
 
-Output JSON includes: `txHash`, `wallet`, `baseMint` (new token address), `dbcConfig`, `dbcPool`, `name`, `symbol`, `uri`.
+Output JSON includes: `txHash`, `wallet`, `baseMint` (new token address), `dbcConfig`, `dbcPool`, `name`, `symbol`, `imageUrl`, `uri`.
 
 Full API and parameters: [references/api-create-token.md](references/api-create-token.md).
 
@@ -116,7 +116,7 @@ Full API and parameters: [references/api-create-token.md](references/api-create-
 
 | Need | Command | When |
 |------|---------|------|
-| **Create token** | `hotfun create-token <name> <symbol> <uri>` | API → sign → send to Solana. Env: PRIVATE_KEY. |
+| **Create token** | `hotfun create-token <name> <symbol> <image_url> [options]` | API → sign → send to Solana. Env: PRIVATE_KEY. |
 
 Chain: **Solana only**.
 
@@ -139,7 +139,6 @@ Set **PRIVATE_KEY** and optionally **SOLANA_RPC_URL** via the process environmen
 
 - **PRIVATE_KEY** (required for write operations): Solana wallet private key in base58 or JSON array format.
 - **SOLANA_RPC_URL** (optional): Solana RPC endpoint; if unset, scripts use `https://api.mainnet-beta.solana.com`.
-- **ROYALTY_PARTY** (optional): Royalty recipient Solana address; defaults to `11111111111111111111111111111111` (system program = no royalty).
 
 ### Execution and install
 

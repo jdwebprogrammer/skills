@@ -1,11 +1,17 @@
 {
   "owner": "qinxiuchen",
   "slug": "hot-fun-ai",
-  "displayName": "hot-fun-ai",
+  "displayName": "Hot Fun Integration",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772790593126,
-    "commit": "https://github.com/openclaw/skills/commit/f1af6b40cb288510b3a99449f1a2b3e559b37944"
+    "version": "1.0.1",
+    "publishedAt": 1772955854072,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772790593126,
+      "commit": "https://github.com/openclaw/skills/commit/f1af6b40cb288510b3a99449f1a2b3e559b37944"
+    }
+  ]
 }

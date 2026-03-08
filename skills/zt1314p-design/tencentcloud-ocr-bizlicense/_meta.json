@@ -1,0 +1,11 @@
+{
+  "owner": "zt1314p-design",
+  "slug": "tencentcloud-ocr-bizlicense",
+  "displayName": "TencentCloud BizLicense OCR",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772961391790,
+    "commit": null
+  },
+  "history": []
+}

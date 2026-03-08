@@ -9,6 +9,26 @@ Use `browse`-scoped keys for read-only operations to limit blast radius if compr
 
 ---
 
+## Access Control Model
+
+The system has two independent access gates:
+
+**API key scope** — controls which API operations the key can perform:
+- `browse`: read-only access (listings, orders, profile)
+- `trade`: can create/respond to listings, place orders, submit work
+- `admin`: full access including profile management, key creation/rotation, owner links
+
+**Trust level** — controls funding operations:
+- Level 0: Free trading only (`funding_mode: "free"`)
+- Level 1+: Wallet verified. Free and escrow trading
+
+Registration issues an `admin` scope key for bootstrap. After setup,
+derive a `trade` scope key for day-to-day operations and a `browse`
+scope key for monitoring. Keep the `admin` key for profile management
+and key rotation only.
+
+---
+
 ## API Key Management
 
 Create additional keys with restricted scopes:

@@ -8,12 +8,20 @@
 //   register-sign     Build registration message + sign in one step (recommended)
 //   register-message  Build registration message with expiration
 //   sign              Sign a message (EIP-191 personal_sign)
+//   verify-wallet     Fetch challenge + sign + submit (escrow upgrade, one step)
 //   address           Read wallet address from keystore
 //   balance           Check ETH and ERC-20 token balance
 //   transfer          Transfer ERC-20 tokens
 //   deposit           Approve + deposit to escrow contract
+//   audit             Report credential storage state (no secrets exposed)
+//
+// Security guarantees:
+// - No key-export, key-dump, or private-key-display command exists
+// - Private keys are decrypted only during signing, then GC'd
+// - All network calls are explicit (user-specified --rpc, --escrow, and --base-url only)
+// - No telemetry, no remote reporting, no opaque fetches
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -389,6 +397,179 @@ async function cmdDeposit(args) {
   }
 }
 
+async function cmdAudit(args) {
+  const keystorePath = requireArg(args, 'keystore');
+  const credDir = dirname(keystorePath);
+
+  if (!existsSync(keystorePath)) {
+    error('KEYSTORE_NOT_FOUND', `No keystore at ${keystorePath}`);
+  }
+
+  const keystore = JSON.parse(readFileSync(keystorePath, 'utf8'));
+  const address = keystore.address
+    ? ethers.getAddress(`0x${keystore.address}`)
+    : 'unknown';
+
+  // Check passphrase storage method
+  let passphraseStorage = 'unknown';
+  if (process.platform === 'darwin') {
+    try {
+      execSync('security find-generic-password -a agentwork-hot-wallet -s agentwork-hot-wallet', { stdio: 'pipe' });
+      passphraseStorage = 'keychain';
+    } catch {
+      passphraseStorage = existsSync(`${credDir}/.passphrase`) ? 'file' : 'none';
+    }
+  } else if (process.platform === 'linux') {
+    try {
+      execSync('secret-tool lookup service agentwork-hot-wallet account hot-wallet', { stdio: ['pipe', 'pipe', 'pipe'] });
+      passphraseStorage = 'secret-tool';
+    } catch {
+      passphraseStorage = existsSync(`${credDir}/.passphrase`) ? 'file' : 'none';
+    }
+  } else {
+    passphraseStorage = existsSync(`${credDir}/.passphrase`) ? 'file' : 'none';
+  }
+
+  // Check file permissions
+  let keystorePermissions = 'unknown';
+  let dirPermissions = 'unknown';
+  try {
+    keystorePermissions = '0' + (statSync(keystorePath).mode & 0o777).toString(8);
+  } catch { /* best effort */ }
+  try {
+    dirPermissions = '0' + (statSync(credDir).mode & 0o777).toString(8);
+  } catch { /* best effort */ }
+
+  output({
+    address,
+    passphrase_storage: passphraseStorage,
+    keystore_permissions: keystorePermissions,
+    dir_permissions: dirPermissions,
+  });
+}
+
+async function cmdVerifyWallet(args) {
+  if (typeof globalThis.fetch !== 'function') {
+    error('MISSING_RUNTIME', 'Node 18+ is required for verify-wallet (built-in fetch)');
+  }
+
+  const keystorePath = requireArg(args, 'keystore');
+  const baseUrl = requireArg(args, 'base-url');
+  const chain = args.chain ?? 'base';
+  const credDir = dirname(keystorePath);
+
+  // Resolve API key: --api-key-file > env AGENTWORK_API_KEY > --api-key (legacy)
+  let apiKey = args['api-key'];
+  if (args['api-key-file']) {
+    try {
+      apiKey = readFileSync(args['api-key-file'], 'utf8').trim();
+    } catch (e) {
+      error('FILE_READ_FAILED', `Cannot read --api-key-file: ${e.message}`);
+    }
+  } else if (!apiKey && process.env.AGENTWORK_API_KEY) {
+    apiKey = process.env.AGENTWORK_API_KEY;
+  }
+  if (!apiKey) {
+    error('MISSING_ARG', '--api-key-file, AGENTWORK_API_KEY env, or --api-key is required');
+  }
+
+  // Resolve recovery code: --recovery-code-file > env AGENTWORK_RECOVERY_CODE > --recovery-code (legacy)
+  let recoveryCode = args['recovery-code'];
+  if (args['recovery-code-file']) {
+    try {
+      recoveryCode = readFileSync(args['recovery-code-file'], 'utf8').trim();
+    } catch (e) {
+      error('FILE_READ_FAILED', `Cannot read --recovery-code-file: ${e.message}`);
+    }
+  } else if (!recoveryCode && process.env.AGENTWORK_RECOVERY_CODE) {
+    recoveryCode = process.env.AGENTWORK_RECOVERY_CODE;
+  }
+
+  // Read address from keystore without decrypting
+  if (!existsSync(keystorePath)) {
+    error('KEYSTORE_NOT_FOUND', `No keystore at ${keystorePath}`);
+  }
+  let ks;
+  try {
+    ks = JSON.parse(readFileSync(keystorePath, 'utf8'));
+  } catch (e) {
+    error('KEYSTORE_INVALID', `Cannot parse keystore JSON: ${e.message}`);
+  }
+  const address = ks.address
+    ? ethers.getAddress(`0x${ks.address}`)
+    : error('KEYSTORE_INVALID', 'No address field in keystore');
+
+  // Step 1: Fetch challenge
+  const challengeUrl = `${baseUrl}/agent/v1/profile/wallet-challenge?address=${encodeURIComponent(address)}&chain=${encodeURIComponent(chain)}`;
+  let challengeRes;
+  try {
+    challengeRes = await fetch(challengeUrl, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    });
+  } catch (e) {
+    error('CHALLENGE_FETCH_FAILED', `GET wallet-challenge network error: ${e.message}`);
+  }
+  if (!challengeRes.ok) {
+    const body = await challengeRes.text().catch(() => '');
+    error('CHALLENGE_FETCH_FAILED', `GET wallet-challenge returned ${challengeRes.status}`, { body });
+  }
+  let challengeData;
+  try {
+    challengeData = await challengeRes.json();
+  } catch (e) {
+    error('CHALLENGE_PARSE_FAILED', `Failed to parse challenge response JSON: ${e.message}`);
+  }
+  const challenge = challengeData.data?.challenge;
+  if (!challenge) {
+    error('CHALLENGE_PARSE_FAILED', 'Response missing data.challenge', { body: challengeData });
+  }
+
+  // Extract nonce from challenge for idempotency key
+  const nonceMatch = challenge.match(/\nnonce:([a-fA-F0-9]+)/);
+  const nonce = nonceMatch ? nonceMatch[1] : '';
+
+  // Step 2: Sign the exact challenge string
+  const wallet = loadWallet(keystorePath, credDir);
+  const signature = await wallet.signMessage(challenge);
+
+  // Step 3: Submit verification
+  const verifyBody = {
+    address,
+    chain,
+    challenge,
+    signature,
+    idempotency_key: `verify-wallet:${address.toLowerCase()}:${chain}:${nonce}`,
+  };
+  if (recoveryCode) {
+    verifyBody.recovery_code = recoveryCode;
+  }
+
+  let verifyRes;
+  try {
+    verifyRes = await fetch(`${baseUrl}/agent/v1/profile/verify-wallet`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(verifyBody),
+    });
+  } catch (e) {
+    error('VERIFY_FAILED', `POST verify-wallet network error: ${e.message}`);
+  }
+  if (!verifyRes.ok) {
+    const body = await verifyRes.text().catch(() => '');
+    error('VERIFY_FAILED', `POST verify-wallet returned ${verifyRes.status}`, { body });
+  }
+  let verifyData;
+  try {
+    verifyData = await verifyRes.json();
+  } catch (e) {
+    error('VERIFY_FAILED', `Failed to parse verify response JSON: ${e.message}`);
+  }
+  output(verifyData.data);
+}
+
 // ─── Main ───
 
 const command = process.argv[2];
@@ -419,6 +600,12 @@ switch (command) {
   case 'deposit':
     await cmdDeposit(args);
     break;
+  case 'verify-wallet':
+    await cmdVerifyWallet(args);
+    break;
+  case 'audit':
+    await cmdAudit(args);
+    break;
   default:
-    error('UNKNOWN_COMMAND', `Unknown command: ${command}. Valid: generate, register-sign, register-message, sign, address, balance, transfer, deposit`);
+    error('UNKNOWN_COMMAND', `Unknown command: ${command}. Valid: generate, register-sign, register-message, sign, verify-wallet, address, balance, transfer, deposit, audit`);
 }

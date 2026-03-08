@@ -6,9 +6,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { fileURLToPath } from "node:url";
+import { spawn, execSync } from "node:child_process";
+import { randomUUID, createHash } from "node:crypto";
 
 const DEFAULT_BASE_URL = process.env.AGENTWORK_BASE_URL?.trim() || "https://agentwork.one";
 const DEFAULT_AGENT_ID = process.env.OPENCLAW_AGENT_ID?.trim() || "main";
@@ -21,11 +20,6 @@ const DEFAULT_DISPATCH_TIMEOUT_BY_PROVIDER = {
   anthropic: 900,
   manus: 1800,
 };
-const PROVIDER_DISPATCH_SCRIPT = {
-  openai: "dispatch-codex.sh",
-  anthropic: "dispatch-claude-code.sh",
-  manus: "dispatch-manus-api.sh",
-};
 const COMPLEXITY_FACTOR = {
   low: 0.8,
   medium: 1.0,
@@ -34,7 +28,10 @@ const COMPLEXITY_FACTOR = {
 const PROVIDER_REQUIRED_ENV = {
   manus: "MANUS_API_KEY",
 };
-const SUPPORTED_PROVIDERS = new Set(Object.keys(PROVIDER_DISPATCH_SCRIPT));
+const PROVIDER_CLI_REQUIREMENT = {
+  openai: "codex",
+  anthropic: "claude",
+};
 
 class ApiError extends Error {
   constructor(input) {
@@ -52,7 +49,7 @@ function usage() {
     [
       "Usage:",
       "  node execute-task.mjs --order-id <ord_xxx> [--provider <openai|anthropic|manus>] [--prompt <text>]",
-      "    [--model <model>] [--dispatch-script <path>] [--dispatch-timeout-seconds <sec>]",
+      "    [--model <model>] [--dispatch-timeout-seconds <sec>]",
       "    [--ttl-seconds <sec>] [--complexity <low|medium|high>] [--max-execution-attempts <n>]",
       "    [--heartbeat-interval-seconds <sec>] [--agent-id <id>] [--state-dir <path>]",
       "    [--api-key <sk_xxx>] [--base-url <https://agentwork.one>] [--keep-state-on-success]",
@@ -444,28 +441,6 @@ async function runCommandWithTimeout(input) {
   });
 }
 
-function parseLastJsonCandidate(stdout, stderr) {
-  const merged = `${stdout}\n${stderr}`.trim();
-  if (!merged) return null;
-
-  const lines = merged.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  for (let i = lines.length - 1; i >= 0; i -= 1) {
-    const line = lines[i];
-    if (!line.startsWith("{") || !line.endsWith("}")) continue;
-    try {
-      return JSON.parse(line);
-    } catch {
-      // keep scanning
-    }
-  }
-
-  try {
-    return JSON.parse(stdout);
-  } catch {
-    return null;
-  }
-}
-
 function buildSubmitContent(dispatchJson) {
   const content = {};
   if (typeof dispatchJson.output === "string" && dispatchJson.output.trim()) {
@@ -531,91 +506,418 @@ function sanitizeProcessEvidence(processEvidence) {
   return out;
 }
 
-function resolveDispatchScriptPath(scriptDir, provider, overridePath) {
-  if (typeof overridePath === "string" && overridePath.trim()) {
-    return path.resolve(overridePath.trim());
+function checkProviderCli(provider) {
+  const cli = PROVIDER_CLI_REQUIREMENT[provider];
+  if (!cli) return;
+  try {
+    execSync(`which ${cli}`, { stdio: "pipe" });
+  } catch {
+    fatal({
+      error_code: "MISSING_PROVIDER_CLI",
+      message: `Provider CLI not found in PATH: ${cli}. Install it and retry.`,
+      retryable: false,
+    });
   }
-  const scriptName = PROVIDER_DISPATCH_SCRIPT[provider];
-  if (!scriptName) return "";
-  return path.join(scriptDir, scriptName);
 }
 
-function classifyDispatchFailure(dispatchJson, runResult) {
-  const fallbackMessage = compactString(runResult.stderr) || "dispatch failed";
-  const message = compactString(dispatchJson?.error) || compactString(dispatchJson?.message) || fallbackMessage;
-  const explicitCode = compactString(dispatchJson?.error_code);
-  if (explicitCode) {
-    return {
-      error_code: explicitCode,
-      message,
-      task_id: compactString(dispatchJson?.task_id) || compactString(dispatchJson?.run_id),
-    };
+async function apiCallRaw(url, options) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), options.timeoutMs || 30000);
+  try {
+    const resp = await fetch(url, {
+      method: options.method || "GET",
+      headers: options.headers || {},
+      body: options.body || undefined,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const text = await resp.text();
+    try { return JSON.parse(text); } catch { return { raw: text }; }
+  } catch {
+    clearTimeout(timeoutId);
+    return null;
   }
-  if (runResult.timedOut) {
-    return {
-      error_code: "DISPATCH_TIMEOUT",
-      message: `dispatch process timed out after ${Math.floor(runResult.duration_ms / 1000)}s`,
-      task_id: compactString(dispatchJson?.task_id) || compactString(dispatchJson?.run_id),
-    };
-  }
-  if (/timed out/i.test(message)) {
-    return {
-      error_code: "DISPATCH_TIMEOUT",
-      message,
-      task_id: compactString(dispatchJson?.task_id) || compactString(dispatchJson?.run_id),
-    };
-  }
-  return {
-    error_code: "DISPATCH_FAILED",
-    message,
-    task_id: compactString(dispatchJson?.task_id) || compactString(dispatchJson?.run_id),
-  };
 }
 
-async function runDispatchOnce(input) {
-  const args = [input.prompt, "--nonce", input.nonce, "--execution-payload-hash", input.executionPayloadHash];
-  if (input.model) {
-    args.push("--model", input.model);
+function parseJsonlEvents(rawTrace) {
+  return rawTrace.split("\n").filter(Boolean).map(line => {
+    try { return JSON.parse(line); } catch { return null; }
+  }).filter(Boolean);
+}
+
+async function dispatchCodex(input) {
+  const model = input.model || "o4-mini";
+  const cmdArgs = ["exec", input.prompt, "--json", "--color", "never", "--sandbox", "read-only", "--skip-git-repo-check", "--model", model];
+  const startedAt = new Date().toISOString();
+  const startEpoch = Date.now();
+
+  const runResult = await runCommandWithTimeout({
+    command: "codex",
+    args: cmdArgs,
+    cwd: process.cwd(),
+    env: process.env,
+    timeoutMs: input.dispatchTimeoutSec * 1000,
+  });
+
+  const completedAt = new Date().toISOString();
+  const executionDurationSeconds = Math.floor((Date.now() - startEpoch) / 1000);
+  const rawTrace = runResult.stdout || "";
+  const rawTraceHash = createHash("sha256").update(rawTrace).digest("hex");
+  const events = parseJsonlEvents(rawTrace);
+
+  let runId = "unknown-thread";
+  for (const ev of events) {
+    if (ev.type === "thread.started" && (ev.thread_id || ev.thread?.id)) {
+      runId = ev.thread_id || ev.thread.id;
+      break;
+    }
   }
-  if (input.provider === "manus") {
-    args.push("--timeout", String(input.dispatchTimeoutSec));
-    if (input.resumeTaskId) {
-      args.push("--resume-task-id", input.resumeTaskId);
+  if (runId === "unknown-thread") {
+    for (const ev of events) {
+      if (ev.thread_id) { runId = ev.thread_id; break; }
     }
   }
 
-  const timeoutMs = input.provider === "manus"
-    ? (input.dispatchTimeoutSec + 180) * 1000
-    : input.dispatchTimeoutSec * 1000;
+  let inputTokens = 0, outputTokens = 0, cachedInputTokens = 0;
+  const actionTypes = new Set();
+  for (const ev of events) {
+    if (ev.type === "turn.completed" && ev.usage) {
+      inputTokens += ev.usage.input_tokens || ev.usage.input || 0;
+      outputTokens += ev.usage.output_tokens || ev.usage.output || 0;
+      cachedInputTokens += ev.usage.cached_input_tokens || ev.usage.cached_input || 0;
+    }
+    if (ev.type === "item.completed") {
+      const at = ev.item?.type || ev.item_type || ev.action_type;
+      if (at) actionTypes.add(at);
+    }
+  }
 
-  const runResult = await runCommandWithTimeout({
-    command: input.scriptPath,
-    args,
-    cwd: input.scriptDir,
-    env: process.env,
-    timeoutMs,
-  });
+  let outputText = "";
+  for (const ev of events) {
+    const val = ev.result || ev.output || ev.message || ev.text || ev.content;
+    if (typeof val === "string") outputText = val;
+  }
 
-  const dispatchJson = parseLastJsonCandidate(runResult.stdout, runResult.stderr);
-  const status = compactString(dispatchJson?.status).toLowerCase();
-  const isSuccess = runResult.code === 0 && status === "success";
-  if (isSuccess) {
+  if (runResult.timedOut) {
     return {
-      ok: true,
-      json: dispatchJson,
-      run_result: runResult,
+      status: "error",
+      error_code: "DISPATCH_TIMEOUT",
+      error: "codex timed out",
+      run_id: runId,
     };
   }
 
-  const failure = classifyDispatchFailure(dispatchJson, runResult);
+  const isSuccess = runResult.code === 0;
+  return {
+    status: isSuccess ? "success" : "error",
+    output: outputText,
+    run_id: runId,
+    started_at: startedAt,
+    completed_at: completedAt,
+    exit_code: runResult.code,
+    stderr: runResult.stderr || "",
+    process_evidence: {
+      schema_version: "1.0",
+      provider: "openai",
+      tool: "codex",
+      run_id: runId,
+      nonce_echo: input.nonce,
+      execution_payload_hash: input.executionPayloadHash,
+      raw_trace: rawTrace,
+      raw_trace_format: "jsonl",
+      raw_trace_hash: rawTraceHash,
+      provider_evidence: {
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        cached_input_tokens: cachedInputTokens,
+        action_types: [...actionTypes],
+        event_count: events.length,
+        execution_duration_seconds: executionDurationSeconds,
+      },
+    },
+  };
+}
+
+async function dispatchClaudeCode(input) {
+  const model = input.model || "sonnet";
+  const maxBudget = "1.00";
+  const cmdArgs = ["-p", input.prompt, "--output-format", "stream-json", "--model", model, "--max-budget-usd", maxBudget, "--no-session-persistence"];
+  const permissionMode = process.env.CLAUDE_PERMISSION_MODE;
+  if (permissionMode) {
+    cmdArgs.push("--permission-mode", permissionMode);
+  }
+
+  const startedAt = new Date().toISOString();
+
+  const runResult = await runCommandWithTimeout({
+    command: "claude",
+    args: cmdArgs,
+    cwd: process.cwd(),
+    env: process.env,
+    timeoutMs: input.dispatchTimeoutSec * 1000,
+  });
+
+  const completedAt = new Date().toISOString();
+  const rawTrace = runResult.stdout || "";
+  const rawTraceHash = createHash("sha256").update(rawTrace).digest("hex");
+  const events = parseJsonlEvents(rawTrace);
+
+  let sessionId = "unknown-session";
+  for (const ev of events) {
+    const sid = ev.session_id || ev.result?.session_id;
+    if (sid) { sessionId = sid; break; }
+  }
+
+  let outputText = "";
+  for (const ev of events) {
+    const val = ev.result || ev.message || ev.text;
+    if (typeof val === "string") outputText = val;
+  }
+
+  let totalCostUsd = 0, numTurns = 0, durationMs = 0, durationApiMs = 0, isError = false, subtype = "unknown";
+  for (const ev of events) {
+    if (ev.total_cost_usd !== undefined) totalCostUsd = ev.total_cost_usd;
+    if (ev.num_turns !== undefined) numTurns = ev.num_turns;
+    if (ev.duration_ms !== undefined) durationMs = ev.duration_ms;
+    if (ev.duration_api_ms !== undefined) durationApiMs = ev.duration_api_ms;
+    if (ev.is_error !== undefined) isError = ev.is_error;
+    if (ev.subtype !== undefined) subtype = ev.subtype;
+  }
+
+  if (runResult.timedOut) {
+    return {
+      status: "error",
+      error_code: "DISPATCH_TIMEOUT",
+      error: "claude timed out",
+      run_id: sessionId,
+    };
+  }
+
+  const isSuccess = runResult.code === 0 && !isError;
+  return {
+    status: isSuccess ? "success" : "error",
+    output: outputText,
+    run_id: sessionId,
+    started_at: startedAt,
+    completed_at: completedAt,
+    exit_code: runResult.code,
+    stderr: runResult.stderr || "",
+    process_evidence: {
+      schema_version: "1.0",
+      provider: "anthropic",
+      tool: "claude_code",
+      run_id: sessionId,
+      nonce_echo: input.nonce,
+      execution_payload_hash: input.executionPayloadHash,
+      raw_trace: rawTrace,
+      raw_trace_format: "jsonl",
+      raw_trace_hash: rawTraceHash,
+      provider_evidence: {
+        total_cost_usd: totalCostUsd,
+        num_turns: numTurns,
+        duration_ms: durationMs,
+        duration_api_ms: durationApiMs,
+        subtype,
+        is_error: isError,
+      },
+    },
+  };
+}
+
+async function dispatchManusApi(input) {
+  const apiKey = process.env.MANUS_API_KEY;
+  const baseUrl = (process.env.MANUS_API_BASE_URL || "https://api.manus.ai").replace(/\/+$/, "");
+  const model = input.model || process.env.MANUS_MODEL || "";
+
+  const startedAt = new Date().toISOString();
+  const startEpoch = Date.now();
+
+  let taskId = "";
+  let resumedFromTaskId = "";
+
+  if (input.resumeTaskId) {
+    taskId = input.resumeTaskId;
+    resumedFromTaskId = input.resumeTaskId;
+  } else {
+    const promptWithNonce = `${input.prompt}\n\n[audit_ref:${input.nonce}]`;
+    const createPayload = model
+      ? { prompt: promptWithNonce, model, createShareableLink: true }
+      : { prompt: promptWithNonce, createShareableLink: true };
+
+    const createResp = await apiCallRaw(`${baseUrl}/v1/tasks`, {
+      method: "POST",
+      headers: { "API_KEY": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify(createPayload),
+      timeoutMs: 30000,
+    });
+
+    taskId = createResp?.task_id || createResp?.id || "";
+    if (!taskId) {
+      return {
+        status: "error",
+        error_code: "DISPATCH_CREATE_FAILED",
+        error: "failed to create manus task",
+      };
+    }
+  }
+
+  const timeout = input.dispatchTimeoutSec;
+  let elapsed = 0;
+  let pollInterval = 10;
+  let finalResp = null;
+
+  while (elapsed < timeout) {
+    const statusResp = await apiCallRaw(`${baseUrl}/v1/tasks/${taskId}`, {
+      method: "GET",
+      headers: { "API_KEY": apiKey },
+      timeoutMs: 15000,
+    });
+
+    const taskStatus = statusResp?.status || "";
+    if (taskStatus === "completed" || taskStatus === "done") { finalResp = statusResp; break; }
+    if (taskStatus === "error" || taskStatus === "failed") { finalResp = statusResp; break; }
+
+    if (elapsed >= 120) pollInterval = 30;
+    await new Promise(resolve => setTimeout(resolve, pollInterval * 1000));
+    elapsed += pollInterval;
+  }
+
+  const completedAt = new Date().toISOString();
+  const executionDurationSeconds = Math.floor((Date.now() - startEpoch) / 1000);
+
+  if (!finalResp) {
+    return {
+      status: "error",
+      error_code: "DISPATCH_TIMEOUT",
+      error: "task timed out",
+      run_id: taskId,
+      task_id: taskId,
+    };
+  }
+
+  const rawTrace = JSON.stringify(finalResp);
+  const rawTraceHash = createHash("sha256").update(rawTrace).digest("hex");
+  const taskStatus = finalResp.status || "unknown";
+  const outputText = finalResp.output || finalResp.result || finalResp.message || "";
+  const creditUsage = finalResp.credit_usage || finalResp.credits_used || 0;
+  const taskUrl = finalResp.metadata?.task_url || finalResp.task_url || "";
+  let shareUrl = finalResp.share_url || finalResp.metadata?.share_url || "";
+  const modelUsed = finalResp.model || finalResp.metadata?.model || "";
+  const instructions = finalResp.instructions || finalResp.prompt || "";
+  const createdTs = finalResp.created_at || 0;
+  const updatedTs = finalResp.updated_at || 0;
+
+  const isSuccess = taskStatus === "completed" || taskStatus === "done";
+
+  if (isSuccess && !shareUrl) {
+    try {
+      const enableResp = await apiCallRaw(`${baseUrl}/v1/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "API_KEY": apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ enableShared: true }),
+        timeoutMs: 15000,
+      });
+      shareUrl = enableResp?.share_url || enableResp?.metadata?.share_url || "";
+    } catch { /* best effort */ }
+  }
+
+  if (isSuccess && !shareUrl) {
+    return {
+      status: "error",
+      error_code: "MISSING_SHARE_URL",
+      error: "task completed but share_url is empty; buyer cannot view results without Manus login",
+      run_id: taskId,
+      task_id: taskId,
+    };
+  }
+
+  return {
+    status: isSuccess ? "success" : "error",
+    error_code: isSuccess ? null : "DISPATCH_TASK_FAILED",
+    output: outputText,
+    share_url: shareUrl,
+    run_id: taskId,
+    task_id: taskId,
+    resumed_from_task_id: resumedFromTaskId || null,
+    started_at: startedAt,
+    completed_at: completedAt,
+    process_evidence: {
+      schema_version: "1.0",
+      provider: "manus",
+      tool: "manus_api",
+      run_id: taskId,
+      nonce_echo: input.nonce,
+      execution_payload_hash: input.executionPayloadHash,
+      raw_trace: rawTrace,
+      raw_trace_format: "json",
+      raw_trace_hash: rawTraceHash,
+      provider_evidence: {
+        api_credit_usage: creditUsage,
+        task_url: taskUrl,
+        share_url: shareUrl,
+        resumed_from_task_id: resumedFromTaskId || null,
+        model: modelUsed,
+        instructions,
+        api_created_at: createdTs,
+        api_updated_at: updatedTs,
+        execution_duration_seconds: executionDurationSeconds,
+        task_status: taskStatus,
+      },
+    },
+  };
+}
+
+const PROVIDER_DISPATCH_FUNCTION = {
+  openai: dispatchCodex,
+  anthropic: dispatchClaudeCode,
+  manus: dispatchManusApi,
+};
+const SUPPORTED_PROVIDERS = new Set(Object.keys(PROVIDER_DISPATCH_FUNCTION));
+
+async function runDispatchOnce(input) {
+  const dispatchFn = PROVIDER_DISPATCH_FUNCTION[input.provider];
+  if (!dispatchFn) {
+    return {
+      ok: false,
+      error_code: "UNSUPPORTED_PROVIDER",
+      message: `No dispatch function for provider: ${input.provider}`,
+      retryable: false,
+    };
+  }
+
+  let dispatchResult;
+  try {
+    dispatchResult = await dispatchFn(input);
+  } catch (e) {
+    return {
+      ok: false,
+      error_code: "DISPATCH_FAILED",
+      message: `Dispatch threw: ${e.message}`,
+      retryable: false,
+    };
+  }
+
+  const status = compactString(dispatchResult?.status).toLowerCase();
+  if (status === "success") {
+    return {
+      ok: true,
+      json: dispatchResult,
+      run_result: { code: dispatchResult.exit_code ?? 0, stdout: "", stderr: dispatchResult.stderr || "" },
+    };
+  }
+
+  const errorCode = compactString(dispatchResult?.error_code) || "DISPATCH_FAILED";
+  const message = compactString(dispatchResult?.error) || compactString(dispatchResult?.message) || "dispatch failed";
+  const taskId = compactString(dispatchResult?.task_id) || compactString(dispatchResult?.run_id);
+
   return {
     ok: false,
-    error_code: failure.error_code,
-    message: failure.message,
-    task_id: failure.task_id,
-    retryable: failure.error_code === "DISPATCH_TIMEOUT",
-    json: dispatchJson,
-    run_result: runResult,
+    error_code: errorCode,
+    message,
+    task_id: taskId,
+    retryable: errorCode === "DISPATCH_TIMEOUT",
+    json: dispatchResult,
+    run_result: { code: dispatchResult?.exit_code ?? 1, stdout: "", stderr: dispatchResult?.stderr || "" },
   };
 }
 
@@ -736,7 +1038,6 @@ async function main() {
   const stateFilePath = path.join(runtimeDir, `${sanitizeOrderId(orderId)}.json`);
   const keepStateOnSuccess = Boolean(args["keep-state-on-success"]);
   const attemptId = compactString(args["attempt-id"]) || randomUUID().slice(0, 8);
-  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const heartbeatIntervalSec = clamp(
     toInt(args["heartbeat-interval-seconds"], DEFAULT_HEARTBEAT_INTERVAL_SEC),
     15,
@@ -817,15 +1118,7 @@ async function main() {
     });
   }
 
-  const scriptPath = resolveDispatchScriptPath(scriptDir, provider, args["dispatch-script"]);
-  if (!scriptPath || !fs.existsSync(scriptPath)) {
-    fatal({
-      error_code: "DISPATCH_SCRIPT_MISSING",
-      message: `Dispatch script not found: ${scriptPath}`,
-      retryable: false,
-      order_id: orderId,
-    });
-  }
+  checkProviderCli(provider);
 
   const requiredEnvKey = PROVIDER_REQUIRED_ENV[provider];
   if (requiredEnvKey && !process.env[requiredEnvKey]) {
@@ -939,8 +1232,6 @@ async function main() {
 
         dispatchResult = await runDispatchOnce({
           provider,
-          scriptPath,
-          scriptDir,
           prompt,
           nonce,
           executionPayloadHash,
@@ -969,8 +1260,6 @@ async function main() {
             });
             dispatchResult = await runDispatchOnce({
               provider,
-              scriptPath,
-              scriptDir,
               prompt,
               nonce,
               executionPayloadHash,

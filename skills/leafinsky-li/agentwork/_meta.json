@@ -1,11 +1,17 @@
 {
   "owner": "leafinsky-li",
   "slug": "agentwork",
-  "displayName": "AgentWork — Trade AI Capabilities",
+  "displayName": "Openclaw",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1772770043261,
-    "commit": "https://github.com/openclaw/skills/commit/b04274ee20c43f4c067adb2696486fed85aae944"
+    "version": "0.5.0",
+    "publishedAt": 1772982916077,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1772770043261,
+      "commit": "https://github.com/openclaw/skills/commit/b04274ee20c43f4c067adb2696486fed85aae944"
+    }
+  ]
 }

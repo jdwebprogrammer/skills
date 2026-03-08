@@ -3,9 +3,15 @@
   "slug": "tistory-publish",
   "displayName": "Tistory Publish",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772422863580,
-    "commit": "https://github.com/openclaw/skills/commit/6abf13d08546cdaddd8a6c761fe1745a978efbe8"
+    "version": "4.0.0",
+    "publishedAt": 1772858657397,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772422863580,
+      "commit": "https://github.com/openclaw/skills/commit/6abf13d08546cdaddd8a6c761fe1745a978efbe8"
+    }
+  ]
 }

@@ -1,124 +1,109 @@
 ---
-name: finnhub
-description: 使用 Finnhub 获取美股/全球股票的实时报价、公司档案、新闻、分析师推荐、内部人交易、盈利日历和基本面财务数据。适用场景：查股价、查公司信息、看最新新闻、了解内部人是否在买卖、查看近期财报日期。免费层60次/分钟。
+name: finnhub-pro
+description: "Finnhub 美股金融数据 CLI。实时报价、公司档案、新闻、分析师推荐、内部人交易、盈利日历、基本面财务、同行比较。Python 脚本封装，免费层 60 次/分钟。Use when: 查股价、查公司信息、看最新新闻、了解内部人是否在买卖、查看近期财报日期。NOT for: K线数据、目标价、情绪分析（需付费层）。"
+version: 1.0.0
 ---
 
-# Finnhub 金融数据技能
+# Finnhub Pro — 美股金融数据 CLI
 
-使用 Finnhub API 获取美股及全球市场数据。
+Python CLI 封装 Finnhub API，聚焦免费层实际可用的 10 个功能。
+
+## 安装
+
+```bash
+pip install finnhub-python
+```
 
 ## API Key
 
-已保存：`YOUR_FINNHUB_API_KEY`（环境变量 `FINNHUB_API_KEY` 或脚本内硬编码）
+1. 去 [finnhub.io](https://finnhub.io) 注册获取免费 API Key
+2. 设置环境变量：`export FINNHUB_API_KEY="your-key-here"`
+3. 或写入 `~/.openclaw/.env`
+
+**⚠️ 脚本不硬编码 Key，必须通过环境变量 `FINNHUB_API_KEY` 传入！**
 
 ## 使用方法
 
-通过 Python 脚本调用：
-
 ```bash
-python3 /Users/dtbllsj/.openclaw/workspace/skills/finnhub/scripts/finnhub_cli.py <command> [args] [--json] [--limit N]
+# 基础格式
+FINNHUB_API_KEY="your-key" python3 scripts/finnhub_cli.py <command> [args] [--json] [--limit N]
+
+# 推荐：设好环境变量后直接用
+python3 scripts/finnhub_cli.py quote AAPL
 ```
 
-或更简洁（在代理中直接用 exec 工具运行）：
-
-```
-PYTHON=/Users/dtbllsj/.pyenv/versions/3.12.12/bin/python3
-SCRIPT=/Users/dtbllsj/.openclaw/workspace/skills/finnhub/scripts/finnhub_cli.py
-```
-
-## 免费层支持的命令
+## 免费层支持的命令（10 个）
 
 ### 实时报价
 ```bash
-python3 $SCRIPT quote AAPL
-python3 $SCRIPT quote NVDA
-python3 $SCRIPT quote TSLA --json   # 返回原始JSON
+python3 scripts/finnhub_cli.py quote AAPL
+python3 scripts/finnhub_cli.py quote NVDA --json   # 原始 JSON
 ```
 
-### 公司��案
+### 公司档案
 ```bash
-python3 $SCRIPT profile AAPL
-python3 $SCRIPT profile BABA
+python3 scripts/finnhub_cli.py profile AAPL
 ```
 
-### 公司新闻（最近7天）
+### 公司新闻（最近 7 天）
 ```bash
-python3 $SCRIPT news NVDA
-python3 $SCRIPT news AAPL --from 2026-02-01 --to 2026-02-21 --limit 5
+python3 scripts/finnhub_cli.py news NVDA
+python3 scripts/finnhub_cli.py news AAPL --from 2026-02-01 --to 2026-02-21 --limit 5
 ```
 
 ### 分析师推荐趋势
 ```bash
-python3 $SCRIPT recommend NVDA
-python3 $SCRIPT recommend TSLA
+python3 scripts/finnhub_cli.py recommend NVDA
 ```
 
-### 内部人交易记录（最近90天）
+### 内部人交易记录（最近 90 天）
 ```bash
-python3 $SCRIPT insiders AAPL
-python3 $SCRIPT insiders NVDA --from 2026-01-01 --to 2026-02-21
+python3 scripts/finnhub_cli.py insiders AAPL
+python3 scripts/finnhub_cli.py insiders NVDA --from 2026-01-01 --to 2026-02-21
 ```
 
-### 盈利日历（未来30天）
+### 盈利日历（未来 30 天）
 ```bash
-python3 $SCRIPT earnings             # 所有股票
-python3 $SCRIPT earnings NVDA        # 指定股票
-python3 $SCRIPT earnings --from 2026-02-21 --to 2026-03-07 --limit 30
+python3 scripts/finnhub_cli.py earnings             # 所有股票
+python3 scripts/finnhub_cli.py earnings NVDA        # 指定股票
+python3 scripts/finnhub_cli.py earnings --from 2026-02-21 --to 2026-03-07
 ```
 
 ### 基本面财务指标
 ```bash
-python3 $SCRIPT financials AAPL
-python3 $SCRIPT financials NVDA --json   # 全部指标JSON
+python3 scripts/finnhub_cli.py financials AAPL
+python3 scripts/finnhub_cli.py financials NVDA --json   # 全部指标
 ```
 
 ### 市场状态
 ```bash
-python3 $SCRIPT market          # 默认美国市场
-python3 $SCRIPT market NYSE
-python3 $SCRIPT market NASDAQ
+python3 scripts/finnhub_cli.py market          # 默认美国
+python3 scripts/finnhub_cli.py market NYSE
 ```
 
 ### 同行公司
 ```bash
-python3 $SCRIPT peers AAPL
-python3 $SCRIPT peers NVDA
+python3 scripts/finnhub_cli.py peers AAPL
 ```
 
 ### 股票代码搜索
 ```bash
-python3 $SCRIPT search "apple"
-python3 $SCRIPT search "nvidia"
+python3 scripts/finnhub_cli.py search "apple"
 ```
 
 ## 不可用功能（付费层）
 
-- `stock_candles` - K线数据（需付费）
-- `price_target` - 分析师目标价（需付费）
-- `news_sentiment` - 新闻情绪��析（需付费）
-- `stock_candles` - 历史价格（需付费）
+- K 线数据（`stock_candles`）
+- 分析师目标价（`price_target`）
+- 新闻情绪分析（`news_sentiment`）
 
 ## 限制
 
-- 免费层：60次/分钟请求限额
-- 错误码 403 = 需要付费升级
-- 错误码 429 = 触发限速
+- 免费层：60 次/分钟
+- 403 = 需付费升级
+- 429 = 触发限速
 
-## Python 直接调用
+## 依赖
 
-```python
-import finnhub
-client = finnhub.Client(api_key="YOUR_FINNHUB_API_KEY")
-
-# 实时报价
-quote = client.quote("AAPL")
-
-# 内部人交易
-insiders = client.stock_insider_transactions("AAPL", "2026-01-01", "2026-02-21")
-
-# 盈利日历
-earnings = client.earnings_calendar(_from="2026-02-21", to="2026-03-07", symbol="", international=False)
-
-# 基本面
-financials = client.company_basic_financials("AAPL", "all")
-```
+- Python 3.10+
+- `finnhub-python`（`pip install finnhub-python`）

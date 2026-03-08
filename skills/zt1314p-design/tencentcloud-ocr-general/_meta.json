@@ -1,11 +1,17 @@
 {
   "owner": "zt1314p-design",
   "slug": "tencentcloud-ocr-general",
-  "displayName": "tencentcloud-ocr-general",
+  "displayName": "TencentCloud General OCR",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772815747571,
-    "commit": "https://github.com/openclaw/skills/commit/8c700cd98025f5b4ff20c4cace51c80a751b06d0"
+    "version": "1.0.1",
+    "publishedAt": 1772961532647,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772815747571,
+      "commit": "https://github.com/openclaw/skills/commit/8c700cd98025f5b4ff20c4cace51c80a751b06d0"
+    }
+  ]
 }

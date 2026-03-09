@@ -1,13 +1,18 @@
 {
   "owner": "galbria",
   "slug": "bria-ai",
-  "displayName": "Image generation and editing",
+  "displayName": "Bria Ai",
   "latest": {
-    "version": "1.2.2",
-    "publishedAt": 1772699018697,
-    "commit": "https://github.com/openclaw/skills/commit/3de3a11b86aca1275bf6958ac477cf06d8d7af28"
+    "version": "1.2.3",
+    "publishedAt": 1772978620366,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.2",
+      "publishedAt": 1772699018697,
+      "commit": "https://github.com/openclaw/skills/commit/3de3a11b86aca1275bf6958ac477cf06d8d7af28"
+    },
     {
       "version": "1.2.1",
       "publishedAt": 1771850776546,

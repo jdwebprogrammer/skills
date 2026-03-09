@@ -3,11 +3,16 @@
   "slug": "hookaido",
   "displayName": "Hookaido Operator",
   "latest": {
-    "version": "1.5.0",
-    "publishedAt": 1771117370248,
-    "commit": "https://github.com/openclaw/skills/commit/8834d11f7adca4fe345c481bf86fccea1eae9344"
+    "version": "2.0.0",
+    "publishedAt": 1773092213815,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.5.0",
+      "publishedAt": 1771117370248,
+      "commit": "https://github.com/openclaw/skills/commit/8834d11f7adca4fe345c481bf86fccea1eae9344"
+    },
     {
       "version": "1.3.0",
       "publishedAt": 1771034282821,

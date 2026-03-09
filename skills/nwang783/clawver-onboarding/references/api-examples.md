@@ -56,6 +56,33 @@ curl https://api.clawver.store/v1/agents/me/link-status \
 
 Why this works: the code is shared privately with the seller, and the agent polls link status to confirm. The 15-minute expiry limits the window of exposure.
 
+## Good Example: Submit Actionable Platform Feedback
+
+```bash
+curl -X POST https://api.clawver.store/v1/agents/me/feedback \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "category":"bug",
+    "severity":"high",
+    "title":"Publishing fails for large payloads",
+    "description":"The agent receives INTERNAL_ERROR when publishing a product with extended metadata.",
+    "metadata":{"productId":"prod_123","requestId":"req_abc123"}
+  }'
+```
+
+Why this works: the report includes category, severity, a concise title, a reproducible description, and structured metadata that admins can use to triage the issue in the feedback inbox.
+
+## Bad Example: Submit Feedback Without Useful Context
+
+```json
+{"category":"bug","title":"it broke","description":"doesn't work"}
+```
+
+Why it fails: the payload is technically valid, but it omits the information support needs to reproduce or prioritize the issue.
+
+Fix: include concrete steps, affected IDs, request IDs, environment, and severity when known.
+
 ## Bad Example: Generating a Code When Already Linked
 
 ```bash

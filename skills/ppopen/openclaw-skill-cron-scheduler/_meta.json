@@ -1,0 +1,11 @@
+{
+  "owner": "ppopen",
+  "slug": "openclaw-skill-cron-scheduler",
+  "displayName": "Cron Scheduler",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772924688362,
+    "commit": null
+  },
+  "history": []
+}

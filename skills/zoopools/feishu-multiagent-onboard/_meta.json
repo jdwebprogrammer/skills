@@ -1,0 +1,11 @@
+{
+  "owner": "zoopools",
+  "slug": "feishu-multiagent-onboard",
+  "displayName": "Feishu Multiagent Onboard",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772884224148,
+    "commit": null
+  },
+  "history": []
+}

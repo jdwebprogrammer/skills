@@ -10,7 +10,7 @@ metadata: {"openclaw":{"os":["darwin","linux"],"homepage":"https://github.com/Me
 Use this skill when the user asks to find, compare, or analyze social videos (YouTube, TikTok, Instagram, Twitter/X), or explicitly invokes `/video_sourcing`.
 
 This workflow expects host runtime execution (sandbox mode off).
-The runner auto-bootstraps a pinned runtime from `Memories-ai-labs/video-sourcing-agent@v0.2.3` when `VIDEO_SOURCING_AGENT_ROOT` is not set.
+The runner auto-bootstraps a pinned runtime from `Memories-ai-labs/video-sourcing-agent@v0.2.5` when `VIDEO_SOURCING_AGENT_ROOT` is not set.
 
 ## Triggering
 
@@ -34,21 +34,29 @@ If `/video_sourcing` is used with no query body, ask for the missing query.
 ### `/video_sourcing` deterministic path
 
 1. Build command with required args:
-   - `<skill_dir>/scripts/run_video_query.sh --query "<query>" --event-detail <compact|verbose> --ux-mode three_message --progress-gate-seconds 10`
-2. Start with `exec` using `background: true`.
+   - `<skill_dir>/scripts/run_video_query.sh --query "<query>" --event-detail <compact|verbose> --ux-mode three_message --progress-gate-seconds 5`
+2. Start with `exec` using `background: true` and explicit timeout:
+   - `timeout: 420`
 3. Poll with `process` using `action: "poll"` every 2-4 seconds until process exits.
-4. Parse NDJSON output and render only these events:
-   - `started` => send: `Starting video sourcing...`
-   - `ux_progress` => send concise middle progress updates from `summary` (throttled by runner)
+4. Parse NDJSON output and render only these events, using your persona voice for all user-facing text:
+   - `started` => send a brief message conveying that video sourcing has begun, written in your persona voice
+   - `ux_progress` => read the `summary` field as structured status data and compose a concise,
+     natural progress update in your persona voice (do not echo `summary` verbatim)
      Send each `ux_progress` as a separate assistant message in Telegram.
    - terminal event (`complete`, `clarification_needed`, `error`) => send final message as-is
 5. Do not forward raw `progress`, `tool_call`, or `tool_result` events for `/video_sourcing`.
-6. Do not rewrite final answer tone/style; preserve the user's existing OpenClaw personality behavior.
+6. Preserve the user's existing OpenClaw personality behavior across all messages — progress and final alike.
+7. Never launch a second run while a prior run session is still active.
+   - If retrying, call `process` with `action: "kill"` for the prior `sessionId` first.
+8. If process exits without a terminal event, send a concise fallback message that:
+   - states run ended before completion,
+   - includes one actionable next step,
+   - does not start another run automatically.
 
 Behavior target for `/video_sourcing`:
 
-1. Fast run (<10s): 2 messages (`started`, terminal).
-2. Longer run (>=10s): recurring throttled `ux_progress` updates, then terminal.
+1. Fast run (<5s): 2 messages (`started`, terminal).
+2. Longer run (>=5s): recurring throttled `ux_progress` updates, then terminal.
 
 ### Free-form path (non-strict)
 
@@ -84,7 +92,7 @@ When terminal event is `error`:
 
 1. If script fails due to missing env/tooling, explain exact missing piece (for example `VIDEO_SOURCING_AGENT_ROOT`, `uv`, or API key env var).
 2. If `VIDEO_SOURCING_AGENT_ROOT` is unset, the runner uses managed path:
-   - `~/.openclaw/data/video-sourcing-agent/v0.2.3`
+   - `~/.openclaw/data/video-sourcing-agent/v0.2.5`
 3. `VIDEO_SOURCING_AGENT_ROOT` remains an advanced override for local development.
 4. Keep response concise and action-oriented.
 5. Never fabricate video URLs or metrics.

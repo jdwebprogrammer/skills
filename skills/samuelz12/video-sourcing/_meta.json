@@ -3,11 +3,16 @@
   "slug": "video-sourcing",
   "displayName": "Video Sourcing",
   "latest": {
-    "version": "0.2.4",
-    "publishedAt": 1771950935482,
-    "commit": "https://github.com/openclaw/skills/commit/0e5afa7360b124d057c61b5dbfd502b2e1c631a1"
+    "version": "0.2.5",
+    "publishedAt": 1772826947128,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.4",
+      "publishedAt": 1771950935482,
+      "commit": "https://github.com/openclaw/skills/commit/0e5afa7360b124d057c61b5dbfd502b2e1c631a1"
+    },
     {
       "version": "0.2.2",
       "publishedAt": 1771900365326,

@@ -3,9 +3,15 @@
   "slug": "agent-memoria",
   "displayName": "MEMORIA: Persistent Memory Layer for AI Agents",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772827708029,
-    "commit": "https://github.com/openclaw/skills/commit/d9078a9fe8e58de76897b82c0e13e334151e5f94"
+    "version": "1.0.2",
+    "publishedAt": 1773147337155,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772827708029,
+      "commit": "https://github.com/openclaw/skills/commit/d9078a9fe8e58de76897b82c0e13e334151e5f94"
+    }
+  ]
 }

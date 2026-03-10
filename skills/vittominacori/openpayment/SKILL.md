@@ -33,6 +33,7 @@ openpayment create \
   --price "<AMOUNT>" \
   --payTo "<EVM_ADDRESS>" \
   --network "<NETWORK>" \
+  [--resourceUrl "<HTTPS_URL_FOR_PROXY>"] \
   --description "<DESCRIPTION>"
 ```
 
@@ -47,18 +48,20 @@ openpayment create \
 
 ### Optional Flags
 
-| Flag            | Description                          |
-| --------------- | ------------------------------------ |
-| `--description` | Payment description (max 500 chars)  |
-| `--json`        | Output as JSON instead of plain text |
+| Flag            | Description                                                         |
+| --------------- | ------------------------------------------------------------------- |
+| `--description` | Payment description (max 500 chars)                                 |
+| `--resourceUrl` | Required when `--type` is `PROXY`; upstream API URL (`https://...`) |
+| `--json`        | Output as JSON instead of plain text                                |
 
 ## Payment Types
 
-| Type         | When to use                                                             |
-| ------------ | ----------------------------------------------------------------------- |
-| `SINGLE_USE` | One-time payment with fixed price (e.g., a specific order, invoice)     |
-| `MULTI_USE`  | Fixed price, can be paid multiple times (e.g., recurring product)       |
-| `VARIABLE`   | Reusable link; payer chooses amount per payment (e.g., tips, donations) |
+| Type         | When to use                                                                                 |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| `SINGLE_USE` | One-time payment with fixed price (e.g., a specific order, invoice)                         |
+| `MULTI_USE`  | Fixed price, can be paid multiple times (e.g., recurring product)                           |
+| `VARIABLE`   | Reusable link; payer chooses amount per payment (e.g., tips, donations)                     |
+| `PROXY`      | Fixed-price multi-use payment that calls a private upstream API after successful settlement |
 
 **Default to `SINGLE_USE`** unless the user specifies otherwise.
 
@@ -115,6 +118,18 @@ openpayment create \
   --payTo "0xYourWalletAddress" \
   --network "eip155:8453" \
   --description "Monthly subscription"
+```
+
+### Proxy payment link
+
+```bash
+openpayment create \
+  --type "PROXY" \
+  --price "10" \
+  --payTo "0xYourWalletAddress" \
+  --network "eip155:8453" \
+  --resourceUrl "https://private-api.example.com/endpoint" \
+  --description "Proxy payment"
 ```
 
 ### Testnet payment link
@@ -177,7 +192,9 @@ Example:
 
 ## Workflow for Handling User Requests
 
-1. **Identify missing info** you need: amount (`--price`), receiver wallet address (`--payTo`). Ask if not provided.
+The first time the skill runs, explain to the user what payment types and networks are allowed.
+
+1. **Identify missing info** you need: amount (`--price`), receiver wallet address (`--payTo`). If `--type=PROXY`, also require `--resourceUrl`.
 2. **Infer defaults**: type defaults to `SINGLE_USE`, network defaults to `eip155:8453` (Base Mainnet).
 3. **Confirm info** with the user before creating.
 4. **Run the command** using the bash tool.
@@ -189,14 +206,16 @@ Example:
 - **No amount**: "How much USDC should the payment be for?"
 - **No type specified but context suggests multi-use**: "Should this link be single-use (one payment only) or reusable?", "Should the amount be fixed or editable?"
 - **No network specified**: assume Base Mainnet; mention it in your response.
+- **PROXY without upstream URL**: "Please provide the private upstream API URL for this proxy payment (`--resourceUrl`)."
 
 ## Validation Rules (enforced by CLI before any API call)
 
-- `--type`: must be `SINGLE_USE`, `MULTI_USE`, or `VARIABLE`
+- `--type`: must be `SINGLE_USE`, `MULTI_USE`, `VARIABLE`, or `PROXY`
 - `--price`: positive decimal number (e.g. `0.001`, `10`, `99.99`)
 - `--payTo`: valid EVM address — `0x` followed by 40 hex characters
 - `--network`: must be `eip155:8453` or `eip155:84532`
 - `--description`: optional string, max 500 characters
+- `--resourceUrl`: required only for `PROXY`; must be a valid `https://` URL
 
 ## Security Notes
 

@@ -3,11 +3,16 @@
   "slug": "openpayment",
   "displayName": "OpenPayment",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772401349789,
-    "commit": "https://github.com/openclaw/skills/commit/bf44bf70bedf0b6d8f13e4f484925e785b6cf577"
+    "version": "1.0.2",
+    "publishedAt": 1773139058679,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772401349789,
+      "commit": "https://github.com/openclaw/skills/commit/bf44bf70bedf0b6d8f13e4f484925e785b6cf577"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772381319853,

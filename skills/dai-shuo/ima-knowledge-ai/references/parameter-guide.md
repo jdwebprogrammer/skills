@@ -94,6 +94,8 @@ clean, modern, luxurious.
 
 ### 1.4 Midjourney 特殊说明
 
+#### 宽高比参数
+
 Midjourney 需要在**提示词末尾**指定宽高比：
 
 ```
@@ -107,10 +109,59 @@ Midjourney 需要在**提示词末尾**指定宽高比：
 - `--ar 4:3` / `--ar 3:4` (标准)
 - `--ar 21:9` (超宽屏)
 
-**示例**:
+#### Niji 动漫模型 ⭐
+
+**动漫风格任务必须启用 Niji 模式**:
+
+```
+提示词内容 --niji 7 --ar 16:9
+```
+
+- `--niji 7` - Midjourney 专用动漫模型（最新版本）
+- `--niji 6` - 上一代动漫模型（备选）
+- **适用**: 动漫风格、卡通化、漫画风格、日系插画、Chibi/Q版
+- **效果**: 大幅提升动漫风格生成质量
+
+#### Descriptive 提示词风格 🎯
+
+**Midjourney 需要描述性（Descriptive）提示词，不要使用指令式（Instructive）**
+
+**❌ 错误 (Instructive - 包含动词指令)**:
+```
+transform into anime style
+turn into cute cartoon
+convert to manga style
+make it look like watercolor
+```
+
+**✅ 正确 (Descriptive - 只描述画面)**:
+```
+anime style, vibrant colors, kawaii aesthetic
+cute cartoon character, big eyes, soft colors
+manga art style, black and white, dynamic lines
+watercolor painting, soft brush strokes, pastel tones
+```
+
+**Few-shot 示例**:
+
+| 任务 | ❌ Instructive | ✅ Descriptive |
+|------|---------------|----------------|
+| 真人照片→动漫 | "transform this photo into anime style" | "anime style, Japanese manga art, vibrant colors, kawaii, dynamic pose --niji 7" |
+| 风景→水彩 | "turn into watercolor painting" | "watercolor landscape, soft brush strokes, pastel colors, dreamy atmosphere" |
+| 人物→卡通 | "convert to cute cartoon" | "cute cartoon character, big sparkling eyes, chibi style, colorful, playful" |
+
+**image_to_image 极简流程**:
+- **只需风格词** + 参考图 → Midjourney 自动理解图片内容
+- 示例: `chibi style, kawaii, big head, large eyes --niji 7 --ar 1:1`
+- 无需描述图片内容（人物、动作、场景），模型会自动提取
+
+**完整示例**:
 ```
 A modern living room with minimalist furniture, natural lighting, 
 photographic style --ar 16:9
+
+chibi style, super deformed, big head, large sparkling eyes, 
+vibrant anime colors --niji 7 --ar 1:1
 ```
 
 ---

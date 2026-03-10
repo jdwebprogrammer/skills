@@ -4,6 +4,14 @@ All notable changes to the **IMA Knowledge AI** skill will be documented in this
 
 ---
 
+## [1.0.4] - 2026-03-11
+
+### Changed
+- Optimized Midjourney usage guide
+- Improved SKILL.md header metadata
+
+---
+
 ## [1.0.3] - 2026-03-05
 
 ### Changed

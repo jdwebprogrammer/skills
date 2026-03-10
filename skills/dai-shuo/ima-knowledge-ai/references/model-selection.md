@@ -89,11 +89,14 @@
 - **建议**: 生成宽屏/方形时，在 prompt 添加：`full frame composition, filling entire canvas edge-to-edge, seamless integration`
 - **替代**: 对构图要求高 → 选 Nano Banana Pro
 
-**⚠️ Midjourney 文字渲染警告**:
-- **核心**: 美学顶级 ✅，但**文字渲染极差** ❌（无法准确渲染任何文字）
+**⚠️ Midjourney 特别说明**:
+- **视觉风格**: 摄影美学感较好 ✅，但**文字渲染极差** ❌（无法准确渲染任何文字）
 - **适用**: 纯视觉艺术（无文字需求）- 概念设计、时尚大片、艺术创作
 - **禁用**: Logo、海报文字、产品包装、广告文案、UI 设计
 - **规则**: `if 需要文字 → 不用 Midjourney，改用 SeeDream/Nano Banana Pro`
+- **image_to_image**: **不推荐** - 平均表现不如 SeeDream 4.5、Nano Banana Pro、Nano Banana 2，仅作为上述模型的 fallback 方案
+- **动漫风格任务**: 需在提示词末尾添加 `--niji 7` 启用专用动漫模型
+- **提示词风格**: 使用 **Descriptive**（描述性）用语，避免 Instructive（指令式，如 "transform into", "turn into"）
 
 **默认推荐** (修正后):
 - **最高质量** → **Nano Banana2** (1280分, 排名#1) 🏆 ← **纠正：原错误推荐Pro**
@@ -222,6 +225,11 @@
 - 包括：真人照片 → Pixar风格、吉卜力风格、油画等
 - **涉及真人形象的任务应优先选择其他服务商**
 
+**内容策略限制任务的模型推荐** 🎯:
+- **真人照片加工、性感元素等敏感任务** → **优先 SeeDream 4.5**
+- **原因**: 内容策略相对宽松 + Arena.AI 综合成绩靠前 (#15, 1145分)
+- **备选**: Midjourney (部分限制，但可尝试)
+
 ---
 
-_Current version: 2026-03-03 16:53 — Added OpenAI real-person policy warning_
+_Current version: 2026-03-10 23:32 — Added Midjourney i2i performance, Niji mode, Descriptive prompt guide, and sensitive content model recommendation_

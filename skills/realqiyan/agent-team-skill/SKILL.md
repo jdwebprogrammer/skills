@@ -10,23 +10,17 @@ allowed-tools: Bash(python3:*) Read(*.json)
 
 Manage team member information including skills, roles, and work assignments.
 
-## Commands
+> 💡 **提示**：如需「更新人员」或「重置数据」功能，请查看 [GUIDE.md](./GUIDE.md)。
 
-All commands are executed via the `team.py` script:
+## 查询团队成员
 
-```bash
-python3 scripts/team.py <command> [options]
-```
-
-### List Members
-
-List all team members in YAML format:
+列出所有团队成员信息（YAML 格式）：
 
 ```bash
 python3 scripts/team.py list
 ```
 
-Output example:
+输出示例：
 ```yaml
 team:
   - agent_id: agent-001
@@ -45,47 +39,13 @@ team:
 # Total: 1 member(s)
 ```
 
-### Add/Update Member
+## 数据存储
 
-Add a new member or update an existing one:
+团队数据存储于 `~/.agent-team/team.json`，目录不存在时自动创建。
 
-```bash
-python3 scripts/team.py update \
-  --agent-id "agent-001" \
-  --name "Alice" \
-  --role "Backend Developer" \
-  --enabled true \
-  --tags "backend,database" \
-  --expertise "python,postgresql" \
-  --not-good-at "frontend,design"
-```
+## 使用场景
 
-Parameters:
-- `--agent-id`: Member unique identifier (required)
-- `--name`: Member name (required)
-- `--role`: Role/position (required)
-- `--enabled`: Enable status (true/false, required)
-- `--tags`: Tags (comma-separated, required)
-- `--expertise`: Skills (comma-separated, required)
-- `--not-good-at`: Weak areas (comma-separated, required)
-
-### Reset Data
-
-Clear all team data and reset to empty state:
-
-```bash
-python3 scripts/team.py reset
-```
-
-This resets the team data to `{"team": {}}`.
-
-## Data Storage
-
-Team data is stored at `~/.agent-team/team.json`. The directory is created automatically if it doesn't exist.
-
-## Use Cases
-
-- Team Building: Record all team members and their skill information
-- Task Assignment: Assign tasks based on member expertise and tags
-- Capability Assessment: Understand each member's strengths and weaknesses
-- Team Collaboration: Quickly find members with specific skills
+- **团队建设**：记录所有成员及其技能信息
+- **任务分配**：根据成员专长和标签分配任务
+- **能力评估**：了解每位成员的优劣势
+- **团队协作**：快速找到具有特定技能的成员

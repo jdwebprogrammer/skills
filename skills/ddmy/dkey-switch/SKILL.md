@@ -1,164 +1,243 @@
 ﻿---
 name: dkey-switch
-description: "当用户表达切换窗口、打开某个正在运行的窗口、切到某个应用、定位/找到/回到某个窗口、查看前台窗口，或表达切换页签/标签页时，立即调用本技能。必须先判断系统：Windows 优先使用 `scripts\\d-switch.cmd activate-window <关键字>`，也可使用 `powershell -File scripts/d-switch.ps1 activate-window <关键字>`；目标不明确时先 `find-window` 后激活；`Dalt`/`Dctrl` 仅作为回退路径。macOS 当前不执行本仓库自动化脚本，改走系统快捷键策略。"
-user-invocable: true
+description: AI 窗口切换技能。用于定位并激活 Windows 上的目标窗口，支持智能模糊匹配、窗口查找、进程匹配、句柄激活与标签切换回退。
+argument-hint: <窗口关键字|进程名|窗口句柄>
+metadata: {
+   "clawdbot":{
+      "emoji":"🪟",
+      "requires":{
+         "bins":["powershell"]
+      },
+      "install":[
+         {"id":"winget-powershell","kind":"winget","package":"Microsoft.PowerShell","bins":["powershell"],"label":"Install PowerShell (winget)"}
+      ]
+   }
+}
 ---
 
-## 核心目标
+## 核心定位
 
-当用户让帮他“看到/切到/定位到”某个正在运行的窗口，或某个窗口里的页签/标签页时，直接调用本技能脚本执行切换。
+本技能可以 **直接执行窗口切换动作**，而非仅提供快捷键建议。
 
-## 强触发意图
+**关键特性**：
+- **智能模糊匹配**：支持缩写（如"企微"→"企业微信"）、拼音首字母、跳跃匹配
+- **双步安全流程**：先 `find-window` 确认，再 `activate-window` 激活
+- **精确回退机制**：激活失败时自动降级到 `Dalt` 或 `Dctrl`
 
-- 查看某个正在运行的应用窗口
-- 切到某个窗口后继续查找其中页签
-- 在多个窗口或多个标签之间定位目标
-- 回到某个程序窗口
-- 打开前台窗口
+---
 
-## 触发关键词
+## 命令速查表
 
-- 窗口类：切换窗口、切到窗口、定位窗口、找到窗口、跳到窗口、回到窗口、切焦点、前台窗口、正在运行的窗口
-- 终端类：打开 CMD、显示终端、查看命令行窗口、切到 terminal
-- 页签类：切换页签、切换标签页、下一个标签、定位标签、切到某个 tab
+| 命令 | 用途 | 示例 |
+|------|------|------|
+| `find-window <关键字> [数量] [--json]` | **首选**：查找候选窗口 | `find-window 企微 3 --json` |
+| `activate-window <关键字> [序号] [--json]` | 激活指定候选 | `activate-window 企微 1 --json` |
+| `activate-process <进程名> [--json]` | 按进程名激活 | `activate-process Code --json` |
+| `activate-handle <句柄> [--json]` | 精确句柄激活 | `activate-handle 0x2072C --json` |
+| `list-windows [--json]` | 列出所有窗口 | `list-windows --json` |
+| `Dalt -N` | Alt+Tab 切换 N 次 | `Dalt -1` |
+| `Dctrl -N` | Ctrl+Tab 标签切换 | `Dctrl -1` |
 
-## 扩展触发短语（面向 AI）
+---
 
-- 回到刚才那个窗口、切回编辑器、把微信调出来、把浏览器调到前台
-- 切到终端窗口、回到命令行、切回 VS Code
-- 把这个应用切到前面、把这个窗口激活
+## AI 标准操作流程（重要）
 
-## 触发排除规则（防误触发）
+### Step 1: 总是先执行 find-window
 
-- 仅在用户要求“执行切换动作”时触发
-- 仅问快捷键知识（如“Alt+Tab 是什么”）不触发
-- 仅讨论概念或对比方案，不触发
+```bash
+scripts\d-switch.cmd find-window <用户关键词> 5 --json
+```
 
-## 调用指南
+### Step 2: 分析返回结果
 
-当命中上述意图或同义表达时：
+**情况 A：完全匹配（高置信度）**
+- 条件：`items[0].title` 与用户说的窗口名**基本一致**
+- 操作：**直接激活**，无需询问用户
 
-1. 必须调用 `dkey-switch`
-2. AI 不做手动窗口操作描述，不让用户自己按快捷键，直接执行脚本命令
-3. 先判断系统再选路径：
-   - Windows：执行本仓库脚本
-   - macOS：当前脚本不支持，使用系统快捷键降级
-4. Windows 下首选命令：
-   - `scripts\d-switch.cmd activate-window <关键字>`
-   - `powershell -File scripts/d-switch.ps1 activate-window <关键字>`
-5. Git Bash / WSL 兼容命令：
-   - `bash scripts/d-switch.sh activate-window <关键字>`
-6. Windows 路由优先级：
-   - 已知目标窗口关键词 -> `activate-window`
-   - 目标不明确或有歧义 -> `find-window` 后再 `activate-window`
-   - 已知稳定进程名 -> `activate-process`
-   - 已有窗口句柄 -> `activate-handle`
-   - 无法命中目标且需要人工逐步切换 -> `Dalt`
-   - 已在目标窗口内需要切标签 -> `Dctrl`
+**情况 B：部分匹配（需确认）**
+- 条件：有候选结果，但第一项不完全匹配用户描述
+- 操作：**列出候选列表，询问用户确认**
 
-## AI 决策模板（Canonical）
+**情况 C：无匹配**
+- 条件：`count == 0` 或 `status == "not_found"`
+- 操作：尝试更通用关键词，或告知用户未找到
 
-- 目标窗口明确：`scripts\d-switch.cmd activate-window <关键字>`
-- 目标窗口不明确：`scripts\d-switch.cmd find-window <关键字> 3 --json` 后 `scripts\d-switch.cmd activate-window <关键字> 1`
-- 目标是稳定进程：`scripts\d-switch.cmd activate-process <进程名> 1`
-- 已知句柄：`scripts\d-switch.cmd activate-handle <句柄>`
-- 窗口内切页签：先 `activate-window`，再 `scripts\d-switch.cmd Dctrl -1`
-- 没有任何目标线索：`scripts\d-switch.cmd Dalt -1`（仅回退）
+### Step 3: 执行激活
 
-## 系统分流
+```bash
+# 用户确认后（或高置信度直接激活）
+scripts\d-switch.cmd activate-window <关键词> <用户选择的序号> --json
+```
 
-- Windows：
-  - 首选 `scripts\d-switch.cmd`
-  - 次选 `powershell -File scripts/d-switch.ps1`
-  - bash 仅兼容，不是首选
-- macOS：
-  - 当前仓库脚本链路不支持
-  - 窗口切换降级：`Cmd+Tab`
-  - 窗口内页签降级：`Ctrl+Tab` 或 `Cmd+Shift+]`
+### 流程图
 
-## 决策规则
+```
+用户："切到企微文档"
+  ↓
+AI：执行 find-window "企微" 5 --json
+  ↓
+检查 items[0]:
+  ├─ 标题 ≈ "企业微信-文档" → 直接 activate-window "企微" 1
+  ├─ 标题不匹配 → 列出列表让用户选择
+  └─ 无结果 → 尝试其他关键词或告知未找到
+```
 
-- 用户说“打开/切到/回到某个应用窗口” -> 优先 `activate-window <关键字>`
-- 用户只给了进程名且较稳定 -> 可优先 `activate-process <进程名>`
-- 用户说“某个窗口里的标签页/tab” -> 先 `activate-window` 定位窗口，再执行 `Dctrl`
-- 用户同时提到窗口和页签 -> 先 `activate-window`，后 `Dctrl`
-- 只有“切一下窗口”但无明确目标 -> 才使用 `Dalt -1` 小步切换
+---
 
-## 功能
+## 模糊匹配规则
 
-- 支持 `Dalt` + 次数：模拟 `Alt+Tab` 连续切换
-- 支持 `Dctrl` + 次数：模拟 `Ctrl+Tab` 连续切换
-- 支持 `list-windows`
-- 支持 `find-window <关键字> [候选数量]`
-- 支持 `activate-window <关键字> [候选序号]`
-- 支持 `activate-process <进程名> [候选序号]`
-- 支持 `activate-handle <句柄>`
-- 支持 `--json`
+### 支持的匹配类型
 
-## 参数兼容约定
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| **缩写/别名** | 内置常见应用别名 | "企微"→"企业微信", "vx"→"微信" |
+| **跳跃匹配** | 字符顺序一致即可 | "qiyou"→"企业微信" |
+| **子串匹配** | 包含即可 | "微信"→"企业微信" |
+| **连字符兼容** | `-` `_` 自动忽略 | "企业微信文档"→"企业微信-文档" |
 
-- `Dalt`/`Dctrl` 的次数参数兼容 `N` 与 `-N`，推荐写法为 `-N`（如 `-1`）
-- `find-window` 默认候选数量为 `3`
-- `activate-window` / `activate-process` 默认候选序号为 `1`
+### 内置别名表
 
-## JSON 状态契约（供上层 AI 决策）
+| 别名 | 匹配目标 |
+|------|----------|
+| 企微, 企业微 | 企业微信 |
+| wx, vx | 微信 |
+| qq | QQ, TIM |
+| code, vscode | Visual Studio Code |
+| vs | Visual Studio |
+| idea | IntelliJ IDEA |
+| chrome | Google Chrome |
+| edge | Microsoft Edge |
+| wt, 终端 | Windows Terminal |
+| cmd | Command Prompt |
 
-- 常见字段：`mode`、`query`、`choice`、`status`、`count`、`items`
-- `status=ok`：列表或查询成功返回
-- `status=activated`：激活成功
-- `status=not_found`：未找到候选
-- `status=choice_out_of_range`：候选序号超范围
-- `status=activation_failed`：找到候选但激活失败
+---
 
-## 退出码约定（供编排层处理）
+## 状态处理与错误恢复
 
-- `0`：成功或可继续流程（含 list/find 成功）
-- `1`：参数或命令不合法
-- `2`：未找到目标
-- `3`：找到目标但激活失败
-- `4`：候选序号越界
+### JSON 返回状态
 
-## 快速开始
+| status | 含义 | 处理建议 |
+|--------|------|----------|
+| `ok` | 查找成功 | 检查 `items` 内容决定下一步 |
+| `activated` | 激活成功 | 流程结束 |
+| `not_found` | 未找到 | 尝试别名/更短关键词 |
+| `choice_out_of_range` | 序号越界 | 重新查找获取有效序号 |
+| `activation_failed` | 激活失败 | 重试1次，仍失败则降级 `Dalt -1` |
 
-1. 进入技能包目录：`cd dkey-switch`
-2. Windows CMD 首选：`scripts\d-switch.cmd activate-window QQ`
-3. Windows PowerShell 可用：`powershell -File scripts/d-switch.ps1 activate-window QQ`
-4. Git Bash / WSL 兼容：`bash scripts/d-switch.sh activate-window QQ`
-5. 运行安全检查：`scripts\security-audit.cmd`
+### 退出码
 
-## 命令示例
+| 码 | 含义 |
+|----|------|
+| 0 | 成功 |
+| 1 | 参数错误 |
+| 2 | 未找到目标 |
+| 3 | 找到但激活失败 |
+| 4 | 候选序号越界 |
 
-- `scripts\d-switch.cmd activate-window QQ`
-- `scripts\d-switch.cmd find-window 微信 3`
-- `scripts\d-switch.cmd activate-process Code`
-- `scripts\d-switch.cmd activate-handle 0x2072C`
-- `scripts\d-switch.cmd list-windows`
-- `scripts\d-switch.cmd find-window code 3 --json`
-- `scripts\d-switch.cmd Dalt -1`
-- `scripts\d-switch.cmd Dctrl -1`
-- `scripts\security-audit.cmd`
+---
 
-## 技能说明
+## 典型场景示例
 
-- 窗口定位默认首选：`activate-window <关键字>`
-- 当用户已经知道目标窗口关键字时，直接执行 `activate-window`
-- 当目标不明确或可能重名时，先执行 `find-window` 查看前 3 个候选，再执行 `activate-window`
-- `Dalt` 仅用于回退，不是窗口定位首选
-- `activate-window` 会优先恢复最小化窗口，再尝试把最佳匹配窗口切到最前
-- `activate-process` 适合窗口标题变化大、但进程名稳定的场景
-- `activate-handle` 适合上层已经拿到窗口句柄、希望精确命中目标窗口的场景
-- 当需要由上层程序继续决策时，可附加 `--json` 获取结构化候选数据
-- 当用户要查看某个窗口内的页签时，先用 `activate-window` 确保窗口正确，再使用 `Dctrl`
-- 建议上层编排优先使用 `--json`，按 `status` 自动选择重试、换候选或降级
+### 场景 1：用户说"切到企微"
 
-## 不触发场景
+```bash
+# AI 执行：
+scripts\d-switch.cmd find-window "企微" 3 --json
 
-- 用户仅询问快捷键知识，未要求执行切换
-- 用户仅做概念讨论，不要求查看/切到/定位具体窗口或页签
+# 假设返回 items[0].title = "企业微信"
+# 判定：完全匹配 → 直接激活
 
-## 注意
+scripts\d-switch.cmd activate-window "企微" 1 --json
+```
 
-- 该脚本会真实触发系统切换窗口/标签
-- Windows 下优先使用 `scripts\d-switch.cmd`
-- `bash scripts/d-switch.sh` 仅作为 Git Bash / WSL 兼容入口
-- macOS 当前仅提供快捷键降级说明，未提供同等自动激活脚本
+### 场景 2：用户说"切到文档"（有多个候选）
+
+```bash
+# AI 执行：
+scripts\d-switch.cmd find-window "文档" 5 --json
+
+# 假设返回多个：WPS文档、企业微信-文档、VS Code文档...
+# 判定：不完全确定 → 询问用户
+
+# AI 回复：找到以下窗口，请确认：
+# 1. WPS文档
+# 2. 企业微信-文档  
+# 3. VS Code - document.txt
+# 请输入序号（1-3）：
+
+# 用户回复：2
+scripts\d-switch.cmd activate-window "文档" 2 --json
+```
+
+### 场景 3：用户说"切到浏览器"
+
+```bash
+# AI 执行：
+scripts\d-switch.cmd find-window "浏览器" 3 --json
+
+# 返回：Chrome、Edge、Firefox...
+# 判定：有歧义 → 询问用户
+```
+
+### 场景 4：只知道进程名
+
+```bash
+# 适合标题频繁变化的应用（如 VS Code）
+scripts\d-switch.cmd activate-process "Code" 1 --json
+```
+
+### 场景 5：窗口内切换标签
+
+```bash
+# 先激活窗口，再切标签
+scripts\d-switch.cmd activate-window "chrome" 1 --json
+scripts\d-switch.cmd Dctrl -1
+```
+
+---
+
+## 非触发场景（不执行脚本）
+
+以下情况**不应**调用本技能：
+- 用户仅询问快捷键知识（如"Alt+Tab 是什么"）
+- 用户仅讨论原理/概念（如"怎么切换窗口"但无执行意图）
+- 用户明确说"不要执行"
+
+---
+
+## 平台兼容性
+
+| 平台 | 入口 | 备注 |
+|------|------|------|
+| Windows | `scripts\d-switch.cmd ...` | 首选 |
+| PowerShell | `powershell -File scripts/d-switch.ps1 ...` | 备选 |
+| Git Bash/WSL | `bash scripts/d-switch.sh ...` | 兼容 |
+| macOS | 无脚本支持 | 降级为快捷键建议 |
+
+---
+
+## 最佳实践
+
+1. **总是先 find-window**：除非用户明确指定了进程名或句柄
+2. **优先使用 --json**：便于程序化解析结果
+3. **高置信度直接执行**：第一项完全匹配时无需询问
+4. **低置信度询问确认**：有候选但不完全匹配时列出选项
+5. **失败时友好提示**：未找到时建议用户可能的关键词
+
+---
+
+## 快速参考卡
+
+```
+用户："切到XXX"
+  ↓
+find-window "XXX" 5 --json
+  ↓
+items[0] 匹配？ ──Yes──→ activate-window "XXX" 1
+    │
+    No
+    ↓
+列出选项询问用户
+    ↓
+activate-window "XXX" <用户选择>
+```

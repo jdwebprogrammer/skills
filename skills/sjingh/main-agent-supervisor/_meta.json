@@ -1,0 +1,11 @@
+{
+  "owner": "sjingh",
+  "slug": "main-agent-supervisor",
+  "displayName": "Main Agent Supervisor",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773170291508,
+    "commit": null
+  },
+  "history": []
+}

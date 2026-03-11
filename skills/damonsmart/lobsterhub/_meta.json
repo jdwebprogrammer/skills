@@ -1,0 +1,11 @@
+{
+  "owner": "damonsmart",
+  "slug": "lobsterhub",
+  "displayName": "LobsterHub Bridge",
+  "latest": {
+    "version": "1.3.0",
+    "publishedAt": 1773240538941,
+    "commit": null
+  },
+  "history": []
+}

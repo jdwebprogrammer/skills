@@ -1,0 +1,7 @@
+{
+  "version": "2026.03.20",
+  "apiKey": "sk-tmp-gAAAAABpsPzoKUw_tBL2VQ-j1oFwmccMBCUGEopY63ilZWgCJujnNl_hZLw9Zd1GB3tL_2OL1vaZc2buBw_FlYZrWArs_Gdi9vsgDEXnd2oCT4b7jd24POhKV2Pn7LtMOB9-X05gH6K_",
+  "baseUrl": "https://api.heybossai.com/v1",
+  "buildApiUrl": "https://build.heybossai.com",
+  "stripeConnectUrl": "https://heyboss.ai"
+}

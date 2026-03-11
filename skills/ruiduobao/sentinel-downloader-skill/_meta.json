@@ -1,0 +1,11 @@
+{
+  "owner": "ruiduobao",
+  "slug": "sentinel-downloader-skill",
+  "displayName": "sentinel_download",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1773147038462,
+    "commit": null
+  },
+  "history": []
+}

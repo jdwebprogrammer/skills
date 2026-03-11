@@ -11,14 +11,13 @@ Usage:
     md = reporter.history_report(tracker, last_n=20)
 
 CLI:
-    python3 scorecard_report.py --config scorecard_config.py --history scorecard_history.jsonl
-    python3 scorecard_report.py --config scorecard_config.py --result result.json
+    python3 scorecard_report.py --config scorecard_config.json --history scorecard_history.jsonl
+    python3 scorecard_report.py --config scorecard_config.json --result result.json
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import os
 import sys
@@ -27,22 +26,20 @@ from typing import Any, Dict, List, Optional
 
 
 def _load_config(path: str) -> Any:
-    # Security: validate path before executing config file
+    """Load configuration from a JSON file."""
     if not os.path.isfile(path):
         raise FileNotFoundError(f"Config not found: {path}")
-    if not path.endswith(".py"):
-        raise ValueError(f"Config must be a .py file: {path}")
+    if not path.endswith(".json"):
+        raise ValueError(f"Config must be a .json file: {path}")
     if os.path.getsize(path) > 1_000_000:
         raise ValueError(f"Config file too large (>1MB): {path}")
-    spec = importlib.util.spec_from_file_location("_scorecard_cfg", path)
-    if spec is None or spec.loader is None:
-        raise FileNotFoundError(f"Cannot load config: {path}")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)  # type: ignore[union-attr]
-    return mod
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 
 def _get(cfg: Any, name: str, default: Any = None) -> Any:
+    if isinstance(cfg, dict):
+        return cfg.get(name, default)
     return getattr(cfg, name, default)
 
 
@@ -210,7 +207,7 @@ class Reporter:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Agent Scorecard — report generation")
-    parser.add_argument("--config", required=True, help="Path to config .py file")
+    parser.add_argument("--config", required=True, help="Path to config .json file")
     parser.add_argument("--result", default=None, help="Single result JSON file")
     parser.add_argument("--history", default=None, help="JSONL history file")
     parser.add_argument("--last", type=int, default=None, help="Use only last N records")

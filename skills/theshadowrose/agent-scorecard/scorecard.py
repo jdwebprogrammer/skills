@@ -12,14 +12,13 @@ Usage:
     print(result.summary())
 
 Or from CLI:
-    python3 scorecard.py --config scorecard_config.py --input response.txt
-    python3 scorecard.py --config scorecard_config.py --input response.txt --manual
+    python3 scorecard.py --config scorecard_config.json --input response.txt
+    python3 scorecard.py --config scorecard_config.json --input response.txt --manual
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import math
 import os
@@ -32,23 +31,21 @@ from typing import Any, Dict, List, Optional, Tuple
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 def _load_config(path: str) -> Any:
-    """Import a Python config file and return the module."""
-    # Security: validate path before executing config file
+    """Load configuration from a JSON file."""
     if not os.path.isfile(path):
         raise FileNotFoundError(f"Config not found: {path}")
-    if not path.endswith(".py"):
-        raise ValueError(f"Config must be a .py file: {path}")
+    if not path.endswith(".json"):
+        raise ValueError(f"Config must be a .json file: {path}")
     if os.path.getsize(path) > 1_000_000:
         raise ValueError(f"Config file too large (>1MB): {path}")
-    spec = importlib.util.spec_from_file_location("_scorecard_cfg", path)
-    if spec is None or spec.loader is None:
-        raise FileNotFoundError(f"Cannot load config: {path}")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)  # type: ignore[union-attr]
-    return mod
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
 
 
 def _get(cfg: Any, name: str, default: Any = None) -> Any:
+    if isinstance(cfg, dict):
+        return cfg.get(name, default)
     return getattr(cfg, name, default)
 
 
@@ -425,7 +422,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Agent Scorecard — evaluate AI agent output quality"
     )
-    parser.add_argument("--config", required=True, help="Path to config .py file")
+    parser.add_argument("--config", required=True, help="Path to config .json file")
     parser.add_argument("--input", required=True, help="Path to text file to evaluate")
     parser.add_argument("--manual", action="store_true", help="Enable interactive manual scoring")
     parser.add_argument("--agent", default=None, help="Agent identifier")

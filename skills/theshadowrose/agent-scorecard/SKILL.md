@@ -1,13 +1,13 @@
 ---
-name: "Agent Scorecard � Output Quality Framework"
+name: "Agent Scorecard Output Quality Framework"
 description: "Configurable quality evaluation for AI agent outputs. Define criteria, run evaluations, track quality over time. No LLM-as-judge, no API calls, pattern-based automated checks."
 author: "@TheShadowRose"
-version: "1.0.2"
+version: "1.0.5"
 tags: ["quality", "evaluation", "scoring", "agent-monitoring", "output-quality", "metrics"]
 license: "MIT"
 ---
 
-# Agent Scorecard � Output Quality Framework
+# Agent Scorecard Output Quality Framework
 
 Configurable quality evaluation for AI agent outputs. Define criteria, run evaluations, track quality over time. No LLM-as-judge, no API calls, pattern-based automated checks.
 
@@ -27,7 +27,7 @@ Agent Scorecard replaces vibes with numbers.
 
 ## What It Does
 
-### 1. **Define Quality Dimensions** (`config_example.py`)
+### 1. **Define Quality Dimensions** (`config_example.json`)
 - Configure what "quality" means for your use case
 - Set dimensions: accuracy, completeness, tone, format compliance, consistency — or your own
 - Define rubrics (what does a 1 vs a 5 look like for each dimension?)
@@ -70,17 +70,17 @@ Agent Scorecard replaces vibes with numbers.
 
 ```bash
 # 1. Configure
-cp config_example.py scorecard_config.py
+cp config_example.json scorecard_config.json
 # Edit dimensions, thresholds, and weights for your use case
 
 # 2. Evaluate a response
-python3 scorecard.py --config scorecard_config.py --input response.txt
+python3 scorecard.py --config scorecard_config.json --input response.txt
 
 # 3. Evaluate and save to history
-python3 scorecard.py --config scorecard_config.py --input response.txt --save history.jsonl
+python3 scorecard.py --config scorecard_config.json --input response.txt --save history.jsonl
 
 # 4. Manual scoring mode
-python3 scorecard.py --config scorecard_config.py --input response.txt --manual --save history.jsonl
+python3 scorecard.py --config scorecard_config.json --input response.txt --manual --save history.jsonl
 
 # 5. View trends
 python3 scorecard_track.py --history history.jsonl --summary
@@ -89,7 +89,7 @@ python3 scorecard_track.py --history history.jsonl --summary
 python3 scorecard_track.py --history history.jsonl --compare 10
 
 # 7. Generate a report
-python3 scorecard_report.py --config scorecard_config.py --history history.jsonl
+python3 scorecard_report.py --config scorecard_config.json --history history.jsonl
 ```
 
 ## Programmatic Usage
@@ -97,7 +97,7 @@ python3 scorecard_report.py --config scorecard_config.py --history history.jsonl
 ```python
 from scorecard import Scorecard, _load_config
 
-cfg = _load_config("scorecard_config.py")
+cfg = _load_config("scorecard_config.json")
 sc = Scorecard(cfg)
 
 text = open("agent_response.txt").read()
@@ -133,7 +133,7 @@ with open("history.jsonl", "a") as f:
 | `scorecard.py` | Main evaluation engine — define, evaluate, score |
 | `scorecard_track.py` | Historical tracking and trend analysis |
 | `scorecard_report.py` | Report generation (markdown, JSON) |
-| `config_example.py` | Full configuration template with all tunables |
+| `config_example.json` | Full configuration template with all tunables |
 | `LIMITATIONS.md` | What this tool doesn't do |
 | `LICENSE` | MIT License |
 
@@ -146,7 +146,7 @@ with open("history.jsonl", "a") as f:
 
 ## Configuration
 
-See `config_example.py` for the complete reference. Key areas:
+See `config_example.json` for the complete reference. Key areas:
 
 - **`DIMENSIONS`** — Quality dimensions with rubrics, weights, thresholds, and auto-checks
 - **`AUTO_CHECKS`** — Tuning for each pattern-based check (markers, thresholds, penalties)
@@ -167,15 +167,13 @@ MIT — See `LICENSE` file.
 ---
 
 
-## ⚠️ Security Note — Config File Execution
+## ⚠️ Security Note — Config File
 
-This skill loads configuration from a user-provided Python file using `importlib.exec_module`. **This executes the config file as Python code.**
+Configuration is loaded from a JSON file. This is safe to share — no code execution.
 
-- Only run config files you have written or fully reviewed
-- A malicious or unreviewed config file can execute arbitrary code on your system
-- This is standard behavior for Python-configurable tools, but treat config files as a trust boundary
-- Config path is validated for existence, `.py` extension, and size (1MB cap) before execution
-- Do not run configs provided by untrusted sources without inspection
+- Config path is validated for existence and size (1MB cap) before loading
+- Must be a `.json` file — raises `ValueError` if given a non-JSON path
+- Keep your config under version control; it defines your quality rubrics and scoring weights
 
 ## ⚠️ Disclaimer
 

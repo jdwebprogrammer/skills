@@ -1,7 +1,11 @@
 """
-Agent Scorecard — Configuration Example
-========================================
-Copy this file to scorecard_config.py and customize.
+Agent Scorecard — Configuration Example (Python Reference)
+===========================================================
+⚠️  Config is now JSON format. Use config_example.json instead.
+    cp config_example.json scorecard_config.json
+
+This file is kept as a human-readable reference only. The active
+config loader requires a .json file and will raise ValueError on .py.
 All settings have sensible defaults; override only what you need.
 """
 

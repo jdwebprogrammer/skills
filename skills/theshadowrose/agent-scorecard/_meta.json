@@ -3,9 +3,15 @@
   "slug": "agent-scorecard",
   "displayName": "Agent Scorecard",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773077493179,
-    "commit": "https://github.com/openclaw/skills/commit/44838ee35dfb8f04ae94825832f2121feaed53d0"
+    "version": "1.0.6",
+    "publishedAt": 1773146930810,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773077493179,
+      "commit": "https://github.com/openclaw/skills/commit/44838ee35dfb8f04ae94825832f2121feaed53d0"
+    }
+  ]
 }

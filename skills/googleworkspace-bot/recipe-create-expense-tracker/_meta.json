@@ -1,0 +1,11 @@
+{
+  "owner": "googleworkspace-bot",
+  "slug": "recipe-create-expense-tracker",
+  "displayName": "Recipe Create Expense Tracker",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772929593536,
+    "commit": null
+  },
+  "history": []
+}

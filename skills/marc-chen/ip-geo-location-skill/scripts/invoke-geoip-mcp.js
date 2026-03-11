@@ -1,7 +1,31 @@
 #!/usr/bin/env node
 
-const MCP_URL = process.env.MCP_URL || 'http://ip.api4claw.com/mcp';
-const TIMEOUT_MS = Number(process.env.MCP_TIMEOUT_MS || 15000);
+const net = require('node:net');
+
+const MCP_URL = 'https://ip.api4claw.com/mcp';
+const TIMEOUT_MS = 15000;
+
+const privateBlockList = new net.BlockList();
+privateBlockList.addSubnet('10.0.0.0', 8, 'ipv4');
+privateBlockList.addSubnet('172.16.0.0', 12, 'ipv4');
+privateBlockList.addSubnet('192.168.0.0', 16, 'ipv4');
+privateBlockList.addSubnet('127.0.0.0', 8, 'ipv4');
+privateBlockList.addSubnet('169.254.0.0', 16, 'ipv4');
+privateBlockList.addSubnet('100.64.0.0', 10, 'ipv4');
+privateBlockList.addSubnet('0.0.0.0', 8, 'ipv4');
+privateBlockList.addSubnet('::1', 128, 'ipv6');
+privateBlockList.addSubnet('fc00::', 7, 'ipv6');
+privateBlockList.addSubnet('fe80::', 10, 'ipv6');
+
+function isPrivateOrReservedIp(ip) {
+  const ipType = net.isIP(ip);
+  if (ipType === 0) {
+    return false;
+  }
+
+  const family = ipType === 4 ? 'ipv4' : 'ipv6';
+  return privateBlockList.check(ip, family);
+}
 
 function parseArgs(argv) {
   const ips = [];
@@ -11,6 +35,24 @@ function parseArgs(argv) {
     }
   }
   return ips;
+}
+
+function validateIps(ips) {
+  const valid = [];
+  const invalid = [];
+  const blocked = [];
+
+  for (const ip of ips) {
+    if (net.isIP(ip) === 0) {
+      invalid.push(ip);
+    } else if (isPrivateOrReservedIp(ip)) {
+      blocked.push(ip);
+    } else {
+      valid.push(ip);
+    }
+  }
+
+  return { valid, invalid, blocked };
 }
 
 async function postJson(url, body, headers = {}) {
@@ -115,10 +157,16 @@ async function queryWithSessionRetry(ipAddress, currentSessionId) {
 }
 
 async function main() {
-  const ips = [...new Set(parseArgs(process.argv.slice(2)))];
+  const parsed = [...new Set(parseArgs(process.argv.slice(2)))];
 
-  if (ips.length === 0) {
+  if (parsed.length === 0) {
     console.error('Usage: node scripts/invoke-geoip-mcp.js <ip1> [ip2] [ip3] ...');
+    process.exit(1);
+  }
+
+  const { valid: ips, invalid, blocked } = validateIps(parsed);
+  if (ips.length === 0) {
+    console.error('No public IPv4/IPv6 inputs found. Private/reserved addresses are blocked from external lookup.');
     process.exit(1);
   }
 
@@ -131,6 +179,13 @@ async function main() {
   }
 
   const results = [];
+  for (const bad of invalid) {
+    results.push({ ip: bad, error: 'Invalid IP format' });
+  }
+  for (const blockedIp of blocked) {
+    results.push({ ip: blockedIp, error: 'Private or reserved IP blocked from external lookup' });
+  }
+
   for (const ip of ips) {
     try {
       const { data, sessionId: updatedSession } = await queryWithSessionRetry(ip, sessionId);

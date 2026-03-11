@@ -2,7 +2,7 @@
 
 ## Endpoint
 
-- URL: `http://ip.api4claw.com/mcp`
+- URL: `https://ip.api4claw.com/mcp`
 - Transport: Streamable HTTP
 - Server name: `mcp-geoip-server`
 - Server version: `1.0.0`
@@ -43,3 +43,4 @@ Typical output fields:
 
 - The endpoint requires an MCP session workflow (`initialize` -> get `Mcp-Session-Id` -> `tools/list` / `tools/call`).
 - Country field text may sometimes show encoding issues in non-UTF8 clients; keep raw data and present `country_code` together for reliability.
+- The script implementation uses a fixed HTTPS endpoint (`https://ip.api4claw.com/mcp`) and does not expose arbitrary endpoint override.

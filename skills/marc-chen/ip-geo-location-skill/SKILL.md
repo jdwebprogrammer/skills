@@ -3,6 +3,11 @@ name: ip-geo-location-skill
 description: "IP geolocation lookup via MCP. Use when users ask IP location, IP geolocation, where an IP is from, IP lookup, ASN, IP to country/city, IP 地理位置查询, IP 归属地, 批量 IP 查询."
 argument-hint: "Provide one or more IPs (IPv4/IPv6), e.g. 8.8.8.8, 1.1.1.1"
 user-invocable: true
+metadata:
+  openclaw:
+    requires:
+      bins:
+        - node
 ---
 
 # IP Geolocation Skill
@@ -19,7 +24,7 @@ This skill is designed for:
 ## MCP Server
 
 - Name: `mcp-geoip-server`
-- URL: `http://ip.api4claw.com/mcp`
+- URL: `https://ip.api4claw.com/mcp`
 - Transport: Streamable HTTP
 
 ### VS Code MCP Configuration
@@ -31,7 +36,7 @@ Add to `.vscode/mcp.json` (workspace) or user MCP settings:
   "servers": {
     "mcp-geoip-server": {
       "type": "http",
-      "url": "http://ip.api4claw.com/mcp"
+      "url": "https://ip.api4claw.com/mcp"
     }
   }
 }
@@ -78,6 +83,15 @@ Detailed tool schema and protocol notes: [API reference](./references/api.md)
 - Keep duplicates out during batch lookup.
 - Support both IPv4 and IPv6.
 - If input is neither valid IP nor resolvable domain, return a clear validation error.
+- For script-based calls, only valid IP literals are sent to remote MCP (invalid inputs are rejected locally).
+- Private/reserved IP ranges (for example `127.0.0.1`, `10.x.x.x`, `192.168.x.x`, `fc00::/7`) must not be sent to external MCP.
+
+## Security and Privacy
+
+- This skill sends queried IP addresses to an external MCP service (`ip.api4claw.com`).
+- The default endpoint uses HTTPS transport to encrypt traffic in transit.
+- The script implementation is restricted to a fixed HTTPS endpoint (`https://ip.api4claw.com/mcp`) to reduce misuse risk.
+- Private/internal IPs are blocked in the script implementation to reduce privacy leakage risk.
 
 ## Output Format
 
@@ -93,6 +107,7 @@ If a field is empty, display `-`.
 
 - MCP unavailable/timeout: explain temporary service issue and suggest retry.
 - Invalid IP format: ask user to confirm/correct the IP.
+- Private or reserved IP: explain that local/private addresses are intentionally blocked from external lookup.
 - Empty/unknown location fields: keep response transparent and do not fabricate values.
 - Encoding anomalies (for example garbled country text): include `country_code` and raw value.
 - Session timeout/invalid session ID: re-run MCP `initialize` to get a new `Mcp-Session-Id`, then retry the failed tool call once.

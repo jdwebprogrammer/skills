@@ -1,131 +1,119 @@
 ---
 name: voc-amazon-reviews
-description: "VOC AI - Amazon 评论智能分析 Skill，为亚马逊卖家提供深度评论洞察。输入 ASIN 自动抓取评论，输出双语结构化报告：情感分析、痛点提炼、卖点发现、Listing 优化建议。Triggers: voc, amazon review analysis, 评论分析, asin分析, 亚马逊评论, voice of customer, listing优化, 痛点分析, 卖点分析"
+description: "VOC AI — Amazon Review Intelligence. Input an ASIN, automatically scrape Amazon reviews and run AI analysis. Outputs a structured bilingual report: sentiment breakdown, top pain points, key selling points, and Listing optimization suggestions. Triggers: voc, amazon review analysis, asin analysis, voice of customer, listing optimization, pain points, selling points, review insights, amazon fba, product research"
 allowed-tools: Bash
 metadata:
   openclaw:
     requires:
       skills:
         - browser
-    homepage: https://github.com/your-org/voc-amazon-reviews
+    homepage: https://github.com/mguozhen/voc-amazon-reviews
 ---
 
-# VOC AI — Amazon 评论智能分析
+# VOC AI — Amazon Review Intelligence
 
-> 输入 ASIN，AI 自动抓取并深度分析亚马逊评论，输出双语结构化洞察报告。
-> Input an ASIN, AI scrapes and analyzes Amazon reviews, outputs bilingual structured insights.
+> Input an ASIN, AI automatically scrapes and deeply analyzes Amazon reviews, outputting a structured bilingual insight report.
 
-## 前置要求 / Prerequisites
+## Prerequisites
 
-确保已安装 browser skill（用于抓取评论）：
+Ensure the `browser` skill is installed (used for scraping reviews):
 
 ```bash
 npx skills add browserbase/skills@browser
 ```
 
-确保已设置 Claude API Key：
+Set your Claude API Key:
 
 ```bash
 export ANTHROPIC_API_KEY="your-api-key"
 ```
 
-## 快速使用 / Quick Start
+## Quick Start
 
 ```bash
-# 基础分析（默认抓取最近 100 条评论）
+# Basic analysis (scrapes latest 100 reviews by default)
 bash ~/.agents/skills/voc-amazon-reviews/voc.sh B08N5WRWNW
 
-# 指定抓取数量
+# Specify review count
 bash ~/.agents/skills/voc-amazon-reviews/voc.sh B08N5WRWNW --limit 200
 
-# 指定市场（默认 amazon.com，支持 amazon.co.uk / amazon.de 等）
+# Specify marketplace (default: amazon.com)
 bash ~/.agents/skills/voc-amazon-reviews/voc.sh B08N5WRWNW --market amazon.co.uk
 
-# 保存报告到文件
+# Save report to file
 bash ~/.agents/skills/voc-amazon-reviews/voc.sh B08N5WRWNW --output report.md
 ```
 
-## 输出示例 / Output Example
+## Sample Output
 
 ```
 ╔══════════════════════════════════════════════════════╗
-║  VOC AI 分析报告 / VOC AI Analysis Report           ║
-║  ASIN: B08N5WRWNW  |  分析评论: 100 条             ║
-║  市场: amazon.com  |  生成时间: 2026-03-08          ║
+║     VOC AI Analysis Report                          ║
+║  ASIN: B08N5WRWNW  |  Reviews Analyzed: 100         ║
+║  Market: amazon.com  |  Generated: 2026-03-08        ║
 ╚══════════════════════════════════════════════════════╝
 
-📊 情感分布 / Sentiment Distribution
-  正面 Positive  ████████████░░░░  74%  (74条)
-  中性 Neutral   ███░░░░░░░░░░░░░  16%  (16条)
-  负面 Negative  ██░░░░░░░░░░░░░░  10%  (10条)
+📊 Sentiment Distribution
+  Positive  ████████████░░░░  74%  (74 reviews)
+  Neutral   ███░░░░░░░░░░░░░  16%  (16 reviews)
+  Negative  ██░░░░░░░░░░░░░░  10%  (10 reviews)
 
-🔴 Top 5 痛点 / Pain Points
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. 电池续航不足 / Short battery life（28条提及）
-   "只用了两天电池就耗尽了，严重影响体验"
+🔴 Top 5 Pain Points
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Short battery life (28 mentions)
    "Battery drained in 2 days, very disappointed"
 
-2. 连接不稳定 / Unstable connection（19条提及）
-   "蓝牙经常断连，需要重新配对"
+2. Unstable Bluetooth connection (19 mentions)
    "Bluetooth keeps disconnecting randomly"
-   ...
 
-🟢 Top 5 卖点 / Selling Points
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. 音质出色 / Excellent sound quality（52条提及）
-   "低音浑厚，高音清晰，性价比极高"
+🟢 Top 5 Selling Points
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Excellent sound quality (52 mentions)
    "Amazing bass and crystal clear highs for the price"
-   ...
 
-💡 Listing 优化建议 / Optimization Suggestions
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. 【标题优化】在标题中明确标注电池容量（如 800mAh）和续航时长，
-   减少因期望不匹配造成的差评
-   [Title] Add battery capacity (e.g. 800mAh) and playtime to title
-   to reduce negative reviews from mismatched expectations
+💡 Listing Optimization Suggestions
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. [Title] Add battery capacity (e.g. 800mAh) and playtime hours
+   to reduce negative reviews from mismatched expectations.
 
-2. 【图片优化】增加一张展示蓝牙连接范围的场景图，
-   并在 A+ Content 中说明配对步骤
-   [Images] Add a scene image showing Bluetooth range and add
-   pairing instructions in A+ Content
+2. [Images] Add a scene image showing Bluetooth range and include
+   pairing instructions in A+ Content.
 
-3. 【bullet points】第一条 bullet 重点突出音质卖点，
-   引用用户真实好评词汇如 "crystal clear" "deep bass"
-   [Bullets] Lead with sound quality in first bullet,
-   use authentic customer language like "crystal clear" "deep bass"
+3. [Bullets] Lead first bullet with sound quality, use authentic
+   customer language like "crystal clear" and "deep bass".
 ```
 
-## 工作流程 / How It Works
+## How It Works
 
 ```
-① 输入 ASIN
+① Input ASIN
       ↓
-② browse CLI 打开 Amazon 评论页（支持分页）
+② browser CLI opens Amazon review pages (with pagination)
       ↓
-③ 解析评论数据（评分、正文、日期、Verified标记）
+③ Parse review data (rating, body, date, Verified badge)
       ↓
-④ Claude API 深度语义分析
+④ Claude AI deep semantic analysis
       ↓
-⑤ 输出双语结构化报告
+⑤ Output structured bilingual report
 ```
 
-## 脚本文件 / Scripts
+## Scripts
 
-| 文件 | 说明 |
+| File | Description |
 |---|---|
-| `voc.sh` | 主入口脚本 |
-| `scraper.sh` | Amazon 评论抓取脚本（基于 browse CLI） |
-| `analyze.sh` | Claude API 分析脚本 |
+| `voc.sh` | Main entry point |
+| `scraper.sh` | Amazon review scraper (based on browser CLI) |
+| `analyze.sh` | Claude API analysis script |
 
-## 注意事项 / Notes
+## Notes
 
-- Amazon 反爬机制较强，建议配置 `BROWSERBASE_API_KEY` 使用远程浏览器
-- 单次分析约消耗 Claude API 2000-5000 tokens（约 $0.01-$0.03）
-- 评论抓取每页约需 5-10 秒，100条约 1-2 分钟
-- 请合理使用，避免频繁大量抓取同一商品
+- Amazon has strong anti-bot measures — configure `BROWSERBASE_API_KEY` for reliable remote browser access
+- Each analysis uses approximately 2,000–5,000 Claude API tokens (~$0.01–$0.03)
+- Review scraping takes ~5–10 seconds per page; 100 reviews ≈ 1–2 minutes
+- Please use responsibly — avoid frequent bulk scraping of the same product
 
-## 相关资源 / Resources
+## Resources
 
-- [Amazon 卖家 Listing 优化指南](#)
-- [VOC 数据如何驱动产品改进](#)
-- [如何用评论数据击败竞品](#)
+- [Amazon Seller Listing Optimization Guide](#)
+- [How VOC Data Drives Product Improvement](#)
+- [Using Review Data to Outcompete Rivals](#)

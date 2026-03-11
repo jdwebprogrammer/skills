@@ -3,9 +3,15 @@
   "slug": "synero",
   "displayName": "Synero",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773070370430,
-    "commit": "https://github.com/openclaw/skills/commit/d565678258c6d45e67005b32e47ab5bab137255f"
+    "version": "1.0.2",
+    "publishedAt": 1773070945550,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773070370430,
+      "commit": "https://github.com/openclaw/skills/commit/d565678258c6d45e67005b32e47ab5bab137255f"
+    }
+  ]
 }

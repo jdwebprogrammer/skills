@@ -1,13 +1,13 @@
 # Prompt Patterns
 
-Use these patterns when asking Synero's council for higher-signal answers.
+Use these patterns when asking Synero's council for higher-signal answers. Synero works best on questions with real uncertainty, tradeoffs, or competing interpretations.
 
 ## Product decision
 
 ```text
 What are the 3 strongest arguments for and against shipping <feature> in the next 30 days?
 Assume a startup context with limited engineering capacity.
-End with a concrete recommendation and the main risk.
+End with a concrete recommendation, the main risk, and what evidence would change your mind.
 ```
 
 ## Strategy debate
@@ -18,7 +18,7 @@ I want disagreement, hidden assumptions, second-order effects, and a final synth
 Keep it practical, not academic.
 ```
 
-## Leadership / hiring
+## Leadership or hiring
 
 ```text
 I'm deciding between <option A> and <option B>.
@@ -30,11 +30,18 @@ Then give me the best recommendation for the next 90 days.
 
 ```text
 Evaluate this technical plan: <plan>.
-Have the council identify likely bottlenecks, hidden migration costs, failure modes, and what I should prototype first.
+Identify likely bottlenecks, hidden migration costs, failure modes, and what I should prototype first.
 Return a clear go / no-go recommendation.
 ```
 
-## Content / positioning
+## Research or synthesis
+
+```text
+I need a reliable synthesis on <topic>.
+Compare the strongest explanations or schools of thought, call out uncertainty, and end with the most decision-useful takeaway.
+```
+
+## Positioning or messaging
 
 ```text
 I need a point of view on <topic>.
@@ -43,8 +50,9 @@ Give me the strongest contrarian angle, the strongest mainstream angle, and a sy
 
 ## Best practices
 
-- Ask for a concrete recommendation, not just exploration.
-- Add operating constraints: timeline, team size, budget, risk tolerance.
+- Ask for a recommendation, not just exploration.
+- Add operating constraints such as timeline, team size, budget, risk tolerance, or target audience.
+- Ask for assumptions, failure modes, and disconfirming evidence when the decision matters.
 - Use `--thread-id` when continuing the same topic across multiple rounds.
 - Use `--quiet` when another tool or script needs clean final text only.
 - Use `--raw` when debugging streaming behavior or inspecting advisor outputs.

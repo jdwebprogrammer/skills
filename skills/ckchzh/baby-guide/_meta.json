@@ -3,9 +3,15 @@
   "slug": "baby-guide",
   "displayName": "Baby Guide",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1773110297804,
-    "commit": "https://github.com/openclaw/skills/commit/9b303088cc3739656a01f8a997c13c1017261a71"
+    "version": "1.1.1",
+    "publishedAt": 1773140951424,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1773110297804,
+      "commit": "https://github.com/openclaw/skills/commit/9b303088cc3739656a01f8a997c13c1017261a71"
+    }
+  ]
 }

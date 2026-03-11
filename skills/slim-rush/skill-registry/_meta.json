@@ -1,0 +1,11 @@
+{
+  "owner": "slim-rush",
+  "slug": "skill-registry",
+  "displayName": "Skill Registry | 技能注册表",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773063961521,
+    "commit": null
+  },
+  "history": []
+}

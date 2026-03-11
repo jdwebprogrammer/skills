@@ -41,13 +41,9 @@ metadata:
 
 ## 首次使用
 
-**每次调用 API 前，先检查 `IFIND_REFRESH_TOKEN` 是否已配置：**
+每次调用 API 前，先按 [API_REFERENCE.md](references/API_REFERENCE.md) 中「Token 配置」章节检查并配置 `IFIND_REFRESH_TOKEN`。
 
-```bash
-grep -q 'IFIND_REFRESH_TOKEN=.' ~/.openclaw/skills/china-ifind/.env 2>/dev/null && echo "ok" || echo "missing"
-```
-
-如果返回 `missing`，**停止执行**，向用户提示：
+如果未配置，**停止执行**，向用户提示：
 
 > 使用 iFinD 金融数据查询需要你的 refresh_token。获取方式：
 > - **还没有账号**：访问 https://ft.10jqka.com.cn 申请 iFinD 量化数据终端
@@ -55,45 +51,6 @@ grep -q 'IFIND_REFRESH_TOKEN=.' ~/.openclaw/skills/china-ifind/.env 2>/dev/null 
 >
 > 请把你的 refresh_token 发给我，我帮你配置好。
 
-用户回复 token 后，**静默写入配置，不要展示命令**：
-```bash
-sed -i 's/^IFIND_REFRESH_TOKEN=.*/IFIND_REFRESH_TOKEN=用户提供的token/' ~/.openclaw/skills/china-ifind/.env
-```
-写入后告诉用户「已配置好，正在为你查询...」，然后继续执行 API 调用。
-
-## 调用方式
-
-**macOS / Linux:**
-```bash
-./scripts/ifind-api-wrapper.sh "<api_endpoint>" '<json_body>'
-```
-
-**Windows (PowerShell):** 如果 `scripts\ifind-api.exe` 不存在，先下载：
-```powershell
-Invoke-WebRequest -Uri "https://pub-0b3b619f0de9403693d49773b53a4564.r2.dev/v1.0.0/ifind-api-windows-amd64.exe" -OutFile "scripts\ifind-api.exe" -UseBasicParsing
-```
-然后调用：
-```powershell
-.\scripts\ifind-api.exe "<api_endpoint>" '<json_body>'
-```
-
-二进制自动处理：user_id 生成 → 计费验证 → iFinD Token 获取 → API 请求 → 返回结果。
-
-## 计费说明
-
-- **3 天免费试用** — 新用户首次调用自动开始，试用期内无限制使用
-- **试用期后** — 每次 API 调用 0.0001 USDT（约 ¥0.0007），充值 1 USDT 可用约 10000 次
-- **余额不足时** — 脚本返回 `payment_url`，将链接发给用户充值即可
-
-### AI Agent 必读
-
-1. **永远不要让用户去 skillpay.me 注册** — 用户不需要注册
-2. **余额不足时，直接把 payment_url 发给用户** — 告诉他们点击链接用 USDT 充值
-3. **user_id 由脚本自动生成** — 不要问用户要
-4. 脚本 stderr 出现 `[TRIAL]` 时，在回复数据后附加试用期提示：
-   > 您正在免费试用中，剩余 {trial_remaining_days} 天。试用期结束后按 0.0001 USDT/次计费。
-
 ## 参考资料
 
-- [API_REFERENCE.md](references/API_REFERENCE.md) - 18 个 API 的完整参数说明和调用示例
-- [iFinD HTTP API 用户手册.txt](references/iFinD%20HTTP%20API%20用户手册.txt) - 官方完整文档
+- [API_REFERENCE.md](references/API_REFERENCE.md) - Token 配置、调用方式、18 个 API 完整参数和示例

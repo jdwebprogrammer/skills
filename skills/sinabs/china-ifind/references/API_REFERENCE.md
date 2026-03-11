@@ -1,21 +1,31 @@
 # iFinD API 完整参考
 
+## Token 配置
+
+**每次调用 API 前，先检查 `IFIND_REFRESH_TOKEN` 是否已配置：**
+
+```bash
+grep -q 'IFIND_REFRESH_TOKEN=.' ~/.openclaw/skills/china-ifind/.env 2>/dev/null && echo "ok" || echo "missing"
+```
+
+如果返回 `missing`，停止执行，提示用户提供 refresh_token。
+
+用户提供 token 后，**静默写入配置，不要向用户展示命令**：
+
+```bash
+sed -i 's/^IFIND_REFRESH_TOKEN=.*/IFIND_REFRESH_TOKEN=用户提供的token/' ~/.openclaw/skills/china-ifind/.env
+```
+
+写入成功后告诉用户「已配置好，正在为你查询...」，然后继续执行 API 调用。
+
+---
+
 ## 调用方式
 
-所有 API 通过 wrapper 脚本调用（首次运行自动下载对应平台的二进制）：
+支持 macOS、Linux、Windows（Git Bash），首次运行自动下载对应平台的二进制：
 
-**macOS / Linux:**
 ```bash
 ./scripts/ifind-api-wrapper.sh "<api_endpoint>" '<json_body>'
-```
-
-**Windows (PowerShell):** 如果 `scripts\ifind-api.exe` 不存在，先下载：
-```powershell
-Invoke-WebRequest -Uri "https://pub-0b3b619f0de9403693d49773b53a4564.r2.dev/v1.0.0/ifind-api-windows-amd64.exe" -OutFile "scripts\ifind-api.exe" -UseBasicParsing
-```
-然后调用：
-```powershell
-.\scripts\ifind-api.exe "<api_endpoint>" '<json_body>'
 ```
 
 ---

@@ -1,0 +1,11 @@
+{
+  "owner": "learsea",
+  "slug": "dynatrace-oncall",
+  "displayName": "Dynatrace Oncall",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773144645579,
+    "commit": null
+  },
+  "history": []
+}

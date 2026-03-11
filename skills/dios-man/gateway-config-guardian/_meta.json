@@ -1,11 +1,17 @@
 {
   "owner": "dios-man",
   "slug": "gateway-config-guardian",
-  "displayName": "Gateway Config Guardian",
+  "displayName": "Gateway Guardian",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773137853767,
-    "commit": "https://github.com/openclaw/skills/commit/750c6744989f81d57b124b5da1492324e5f2c76b"
+    "version": "1.0.4",
+    "publishedAt": 1773138693771,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773137853767,
+      "commit": "https://github.com/openclaw/skills/commit/750c6744989f81d57b124b5da1492324e5f2c76b"
+    }
+  ]
 }

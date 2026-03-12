@@ -3,11 +3,16 @@
   "slug": "quality-manager-qms-iso13485",
   "displayName": "Quality Manager Qms Iso13485",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770402703871,
-    "commit": "https://github.com/openclaw/skills/commit/6d83b8f808a0f2d277b2a161102e4ec5e0fd3226"
+    "version": "2.1.1",
+    "publishedAt": 1773070408501,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770402703871,
+      "commit": "https://github.com/openclaw/skills/commit/6d83b8f808a0f2d277b2a161102e4ec5e0fd3226"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1770026633583,
